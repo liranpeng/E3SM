@@ -315,6 +315,11 @@
   </compset>
 
   <compset>
+    <alias>F2010-MMF2-ECPP</alias>
+    <lname>2010_EAM%MMF2-ECPP_ELM%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>F2010-MMF2-AWFL</alias>
     <lname>2010_EAM%MMF2-AWFL_ELM%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>

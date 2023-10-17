@@ -1185,22 +1185,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
          !------------------------------------------------------------------------------------------
          ! Set aerosol
          !------------------------------------------------------------------------------------------
-#if defined(MODAL_AERO)
-         phase = 1  ! interstital aerosols only
-         do i = 1,ncol
-            icrm = ncol_sum + i
-            air_density(i,1:pver) = state(c)%pmid(i,1:pver) / (287.15*state(c)%t(i,1:pver))
-            do k = 1, pver
-               do m = 1, ntot_amode
-                 call loadaer( state(c), pbuf_chunk, i, i, k, m, air_density, phase, &
-                               aerosol_num, aerosol_vol, aerosol_hygro)
-                 crm_input%naermod (icrm,k,m) = aerosol_num(i)
-                 crm_input%vaerosol(icrm,k,m) = aerosol_vol(i)
-                 crm_input%hygro   (icrm,k,m) = aerosol_hygro(i)
-               end do    
-            end do
-         end do
-#endif
+! #if defined(MODAL_AERO)
+!          phase = 1  ! interstital aerosols only
+!          do i = 1,ncol
+!             icrm = ncol_sum + i
+!             air_density(i,1:pver) = state(c)%pmid(i,1:pver) / (287.15*state(c)%t(i,1:pver))
+!             do k = 1, pver
+!                do m = 1, ntot_amode
+!                  call loadaer( state(c), pbuf_chunk, i, i, k, m, air_density, phase, &
+!                                aerosol_num, aerosol_vol, aerosol_hygro)
+!                  crm_input%naermod (icrm,k,m) = aerosol_num(i)
+!                  crm_input%vaerosol(icrm,k,m) = aerosol_vol(i)
+!                  crm_input%hygro   (icrm,k,m) = aerosol_hygro(i)
+!                end do    
+!             end do
+!          end do
+! #endif
          !------------------------------------------------------------------------------------------
          !------------------------------------------------------------------------------------------
 

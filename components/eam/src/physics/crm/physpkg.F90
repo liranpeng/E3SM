@@ -1814,6 +1814,19 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
       ! Without ECPP we should be using prescribed aerosols, so we only
       ! need to consider the wet deposition and water uptake for radiation
 
+      ! Temporary workaround for ECPP testing
+      mu(:,:) = 0.
+      eu(:,:) = 0.
+      du(:,:) = 0.
+      md(:,:) = 0.
+      ed(:,:) = 0.
+      dp(:,:) = 0.
+      dsubcld (:) = 1      ! layer thickness in mbs (between upper/lower interface).
+      jt      (:) = 1      ! layer thickness in mbs between lcl and maxi.    
+      maxg    (:) = plev-1 ! top level index of deep cumulus convection.
+      ideep   (:) = 1      ! gathered values of maxi.
+      lengath = phys_state(c)%ncol
+
       ! Aerosol wet removal (including aerosol water uptake)
       call t_startf('aero_model_wetdep')
       call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state,  & ! inputs

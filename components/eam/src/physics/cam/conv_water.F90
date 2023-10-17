@@ -87,27 +87,28 @@ module conv_water
 
    implicit none
    logical :: use_MMF
-
+print*,'Liran in conv_water1'
    call phys_getopts(use_MMF_out = use_MMF)
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
- 
+ print*,'Liran in conv_water2'
    icwmrsh_idx  = pbuf_get_index('ICWMRSH')
    icwmrdp_idx  = pbuf_get_index('ICWMRDP')
    icimrdp_idx  = -1
+print*,'Liran in conv_water3'
    if (.not. use_MMF) icimrdp_idx  = pbuf_get_index('ICIMRDP')
    fice_idx     = pbuf_get_index('FICE')
    sh_frac_idx  = pbuf_get_index('SH_FRAC')
    dp_frac_idx  = pbuf_get_index('DP_FRAC')
    ast_idx      = pbuf_get_index('AST')
    rei_idx      = pbuf_get_index('REI')
-
+print*,'Liran in conv_water4'
    ! Convective cloud water variables.
    call addfld ('ICIMRCU', (/ 'lev' /), 'A', 'kg/kg', 'Convection in-cloud ice mixing ratio '                   )
    call addfld ('ICLMRCU', (/ 'lev' /), 'A', 'kg/kg', 'Convection in-cloud liquid mixing ratio '                )
    call addfld ('ICIMRTOT', (/ 'lev' /), 'A', 'kg/kg', 'Total in-cloud ice mixing ratio '                        )
    call addfld ('ICLMRTOT', (/ 'lev' /), 'A', 'kg/kg', 'Total in-cloud liquid mixing ratio '                     )
-
+print*,'Liran in conv_water5'
    end subroutine conv_water_init
 
    subroutine conv_water_4rad( state, pbuf,  conv_water_mode, totg_liq, totg_ice )

@@ -485,14 +485,14 @@ subroutine phys_inidat( cam_out, pbuf2d )
     call pbuf_set_field(pbuf2d, tpert_idx, tptr)
 
 
-    call infld('vmag_gust', fh_ini, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
-         tptr(:,:), found, gridname='physgrid')
-    if(.not. found) then
-       tptr(:,:) = 0._r8
-       if (masterproc) write(iulog,*) 'vmag_gust initialized to 1.'
-    end if
-    vmag_gust_idx = pbuf_get_index( 'vmag_gust')
-    call pbuf_set_field(pbuf2d, vmag_gust_idx, tptr)
+    !call infld('vmag_gust', fh_ini, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
+    !     tptr(:,:), found, gridname='physgrid')
+    !if(.not. found) then
+    !   tptr(:,:) = 0._r8
+    !   if (masterproc) write(iulog,*) 'vmag_gust initialized to 1.'
+    !end if
+    !vmag_gust_idx = pbuf_get_index( 'vmag_gust')
+    !call pbuf_set_field(pbuf2d, vmag_gust_idx, tptr)
 
 
     fieldname='QPERT'  
@@ -876,27 +876,39 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     ! Prognostic chemistry.
     call t_startf ('chem_init')
+    print*,'Liran cam check 01'
     call chem_init(phys_state,pbuf2d, species_class)
+print*,'Liran cam check 02'
     call t_stopf ('chem_init')
 
     ! Prescribed tracers
     call prescribed_ozone_init()
+print*,'Liran cam check 03'    
     call prescribed_ghg_init()
+print*,'Liran cam check 04'
     call prescribed_aero_init()
+print*,'Liran cam check 05'    
     call read_spa_data_init()
+print*,'Liran cam check 06'    
     call aerodep_flx_init()
+print*,'Liran cam check 07'    
     call aircraft_emit_init(phys_state,pbuf2d)
     !when is_cmip6_volc is true ,cmip6 style volcanic file is read
     !Initialized to .false. here but it gets its values from prescribed_volcaero_init
     is_cmip6_volc = .false. 
+print*,'Liran cam check 08'    
     call t_startf ('prescribed_volcaero_init')
+print*,'Liran cam check 09'    
     call prescribed_volcaero_init(is_cmip6_volc)
+print*,'Liran cam check 10'    
     call t_stopf ('prescribed_volcaero_init')
 
     ! Initialize ocean data
     if (has_mam_mom) then
        call t_startf ('init_ocean_data')
+print*,'Liran cam check 11'       
        call init_ocean_data()
+print*,'Liran cam check 12'       
        call t_stopf ('init_ocean_data')
     end if
 
@@ -905,14 +917,14 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
        call co2_init()
     end if
     call co2_diags_init(phys_state)
-
+print*,'Liran cam check 13'
     ! CAM3 prescribed ozone
     if (cam3_ozone_data_on) call cam3_ozone_data_init(phys_state)
-
+print*,'Liran cam check 14'
     call gw_init()
-
+print*,'Liran cam check 15'
     call rayleigh_friction_init()
-
+print*,'Liran cam check 16'
     call pbl_utils_init(gravit, karman, cpair, rair, zvir)
     if (.not. do_clubb_sgs .and. .not. do_shoc_sgs) call vertical_diffusion_init(pbuf2d)
 
@@ -923,33 +935,33 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
           call ionos_init()
        endif
     endif
-
+print*,'Liran cam check 17'
     call tsinti(tmelt, latvap, rair, stebol, latice)
-
+print*,'Liran cam check 18'
     call t_startf ('radiation_init')
     call radiation_init(phys_state,pbuf2d)
     call t_stopf ('radiation_init')
-
+print*,'Liran cam check 19'
     call rad_solar_var_init()
-
+print*,'Liran cam check 20'
     call cloud_diagnostics_init()
-
+print*,'Liran cam check 21'
     call radheat_init(pref_mid)
-
+print*,'Liran cam check 22'
     call convect_shallow_init(pref_edge, pbuf2d)
-
+print*,'Liran cam check 23'
     call cldfrc_init(dp1)! for passing dp1 on to clubb
     call cldfrc2m_init()
-
+print*,'Liran cam check 24'
     call convect_deep_init(pref_edge, pbuf2d)
-
+print*,'Liran cam check 25'
     ! If this is the first timestep of an initial run,
     ! set some old-timestep values for dCAPE diagnostics.
     ! In restart/branch/hybrid runs, these values are read from
     ! the restart file.
 
     call phys_getopts( deep_scheme_out   = deep_scheme )
-
+print*,'Liran cam check 26'
     if (is_first_step() .and. deep_scheme .eq. 'ZM') then
        do lchnk = begchunk, endchunk
           pbuf1d => pbuf_get_chunk(pbuf2d, lchnk)
@@ -957,7 +969,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
        end do
     end if
     !----
-
+print*,'Liran cam check 27'
     if( microp_scheme == 'RK' ) then
        call stratiform_init()
     elseif( microp_scheme == 'MG' .or. microp_scheme == 'P3' ) then 
@@ -966,17 +978,17 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
        call microp_driver_init(pbuf2d)
        call conv_water_init
     end if
-
+print*,'Liran cam check 28'
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d,dp1)
-    
+    print*,'Liran cam check 29'
     ! initiate SHOC within E3SM
     if (do_shoc_sgs) call shoc_init_e3sm(pbuf2d,dp1)
-
+print*,'Liran cam check 30'
     call qbo_init
-
+print*,'Liran cam check 31'
     call iondrag_init(pref_mid)
-
+print*,'Liran cam check 32'
 #if ( defined OFFLINE_DYN )
     call metdata_phys_init()
 #endif
@@ -992,9 +1004,9 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
     prec_sh_idx  = pbuf_get_index('PREC_SH')
     snow_sh_idx  = pbuf_get_index('SNOW_SH')
-
+print*,'Liran cam check 33'
     call phys_getopts(prog_modal_aero_out=prog_modal_aero)
-
+print*,'Liran cam check 34'
     if (clim_modal_aero) then
 
        ! If climate calculations are affected by prescribed modal aerosols, the
@@ -1008,7 +1020,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
        call modal_aero_wateruptake_init(pbuf2d)
 
     end if
-
+print*,'Liran cam check 35'
     ! Initialize Nudging Parameters
     !--------------------------------
     if(Nudge_Model) call nudging_init
@@ -1016,7 +1028,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     
    !BSINGH -  addfld and adddefault calls for perturb growth testing    
     if(pergro_test_active)call add_fld_default_calls()
-
+print*,'Liran cam check 36'
     if(is_first_step().or.is_first_restart_step())then
       nstep_ignore_diagn1 = get_nstep()
       nstep_ignore_diagn2 = nstep_ignore_diagn1 + 1

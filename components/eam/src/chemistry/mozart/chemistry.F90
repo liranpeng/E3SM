@@ -945,20 +945,20 @@ end function chem_is_active
 
     call phys_getopts( cam_chempkg_out=chem_name, &
                        history_aerosol_out=history_aerosol )
-
+print*,'Liran check chem0'
     ! Initialize aerosols - part 1   ! REASTER 8/4/2015
     call aero_model_init( pbuf2d, species_class, 1 ) 
-
+print*,'Liran check chem1'
     ! aqueous chem initialization
     call sox_inti()
-
+print*,'Liran check chem2'
 !-----------------------------------------------------------------------
 ! Get liq and ice cloud water indicies
 !-----------------------------------------------------------------------
     call cnst_get_ind( 'CLDLIQ', ixcldliq )
     call cnst_get_ind( 'CLDICE', ixcldice )
     call cnst_get_ind( 'NUMLIQ', ixndrop, abrtf=.false.  )
-
+print*,'Liran check chem3'
 !-----------------------------------------------------------------------
 ! get pbuf indicies
 !-----------------------------------------------------------------------
@@ -971,7 +971,7 @@ end function chem_is_active
 
     call addfld( 'HEIGHT',        (/ 'ilev' /),'A',    'm', 'geopotential height above surface at interfaces (m)' )
     call addfld( 'CT_H2O_GHG', (/ 'lev' /), 'A','kg/kg/s', 'ghg-chem h2o source/sink' )
-
+print*,'Liran check chem4'
 !-----------------------------------------------------------------------
 ! Set names of chemistry variable tendencies and declare them as history variables
 !-----------------------------------------------------------------------
@@ -998,7 +998,7 @@ end function chem_is_active
     end do
 
     if ( masterproc ) write(iulog,*) 'chem_init: addfld done'
-
+print*,'Liran check chem5'
 !-----------------------------------------------------------------------
 ! Initialize chemistry modules
 !-----------------------------------------------------------------------
@@ -1041,7 +1041,7 @@ end function chem_is_active
        , chem_name &
        , pbuf2d &
        )
-
+print*,'Liran check chem6'
      if ( ghg_chem ) then
         call ghg_chem_init(phys_state, bndtvg, h2orates)
      endif
@@ -1061,7 +1061,7 @@ end function chem_is_active
      if ( chem_is('waccm_mozart') .or. chem_is('waccm_mozart_mam3') ) then
         call init_cfc11star(pbuf2d)
      endif
-     
+print*,'Liran check chem7'     
      ! MEGAN emissions initialize
      if (shr_megan_mechcomps_n>0) then
 
@@ -1083,10 +1083,10 @@ end function chem_is_active
                 trim(shr_megan_mechcomps(n)%name)//' MEGAN emissions flux')
         enddo
      endif
-
+print*,'Liran check chem8'
     ! Initialize aerosols - part 2   ! REASTER 8/4/2015
     call aero_model_init( pbuf2d, species_class, 2 ) 
-
+print*,'Liran check chem9'
   end subroutine chem_init
 
 !================================================================================

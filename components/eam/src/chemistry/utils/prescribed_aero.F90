@@ -124,7 +124,7 @@ contains
        return
     endif
 
-
+print*,'Liran check aerosol 01'
     allocate (file%in_pbuf(size(specifier)))
     if (clim_modal_aero) then
       file%in_pbuf(:) = .false.
@@ -139,9 +139,10 @@ contains
     else
       file%in_pbuf(:) = .true.
     endif
+print*,'Liran check aerosol 02'    
     call trcdata_init( specifier, filename, filelist, datapath, fields, file, &
                        rmv_file, cycle_yr, fixed_ymd, fixed_tod, datatype)
-        
+print*,'Liran check aerosol 03'        
     number_flds = 0
     if (associated(fields)) number_flds = size( fields )
 
@@ -170,7 +171,7 @@ contains
           call addfld(trim(fields(i)%fldnam)//'_D', (/ 'lev' /), 'A',trim(fields(i)%units), 'prescribed aero' )
        endif
     enddo fldloop
-
+print*,'Liran check aerosol 04'
     !Initialize seeds at first time step    
     s1 = 1
     s2 = 2

@@ -365,21 +365,21 @@ contains
     call dust_init()
     call seasalt_init()
     call wetdep_init()
-
+print*,'Liran check here 0001'
     fracis_idx      = pbuf_get_index('FRACIS') 
     prain_idx       = pbuf_get_index('PRAIN')  
     nevapr_idx      = pbuf_get_index('NEVAPR') 
     rprddp_idx      = pbuf_get_index('RPRDDP')  
     rprdsh_idx      = pbuf_get_index('RPRDSH')  
-    
+print*,'Liran check here 0002'
     nevapr_shcu_idx = pbuf_get_index('NEVAPR_SHCU')
     nevapr_dpcu_idx = pbuf_get_index('NEVAPR_DPCU')
-
+print*,'Liran check here 0003'
     icwmrdp_idx      = pbuf_get_index('ICWMRDP')
     icwmrsh_idx      = pbuf_get_index('ICWMRSH')
     sh_frac_idx      = pbuf_get_index('SH_FRAC')
     dp_frac_idx      = pbuf_get_index('DP_FRAC')
-
+print*,'Liran check here 0004'
     ! Defense against configurations that do not use ZM
     if (deep_scheme == 'ZM') wuc_idx          = pbuf_get_index('WUC')
 
@@ -490,7 +490,7 @@ contains
        if (history_aerosol) then
           call add_default (dummy, 1, ' ')
        endif
-
+print*,'Liran check here 0005'
        dummy = 'F_eff'
        call addfld (dummy,horiz_only, 'A','1','Effective enrichment factor of marine organic matter')
        if (history_aerosol) then
@@ -514,11 +514,11 @@ contains
        id = wetdep_indices(m)
        wetdep_lq(id) = .true.
     enddo
-
+print*,'Liran check here 0006'
     wetdens_ap_idx = pbuf_get_index('WETDENS_AP')
     qaerwat_idx    = pbuf_get_index('QAERWAT')
     pblh_idx       = pbuf_get_index('pblh')
-
+print*,'Liran check here 0007'
     rate1_cw2pr_st_idx  = pbuf_get_index('RATE1_CW2PR_ST') 
     call pbuf_set_field(pbuf2d, rate1_cw2pr_st_idx, 0.0_r8)
 
@@ -551,7 +551,7 @@ contains
        endif
 
     enddo
-
+print*,'Liran check here 0008'
     do m = 1,nwetdep
        if ( masterproc ) write(iulog,'(a,i3,2x,a)') 'm, wetdep_list', m, trim(wetdep_list(m)) ! REASTER 08/04/2015
        
@@ -615,7 +615,7 @@ contains
        endif
 
     enddo ! m = 1,nwetdep
-
+print*,'Liran check here 0009'
     do m = 1,gas_pcnst
 
        if  ( solsym(m)(1:3) == 'num') then
@@ -658,7 +658,7 @@ contains
        endif
 
     enddo
-
+print*,'Liran check here 00010'
     do n = 1,pcnst
        if( .not. (cnst_name_cw(n) == ' ') ) then
 
@@ -667,7 +667,7 @@ contains
           else
              unit_basename = 'kg'  
           endif
-
+print*,'Liran check here 00010_0'
           call addfld( cnst_name_cw(n), (/ 'lev' /), 'A',                unit_basename//'/kg ', &
                trim(cnst_name_cw(n))//' in cloud water')
           call addfld (trim(cnst_name_cw(n))//'SFWET',horiz_only,  'A', unit_basename//'/m2/s ', &
@@ -686,7 +686,7 @@ contains
                trim(cnst_name_cw(n))//' turbulent dry deposition flux')
           call addfld (trim(cnst_name_cw(n))//'GVF',   horiz_only, 'A',   unit_basename//'/m2/s ', &
                trim(cnst_name_cw(n))//' gravitational dry deposition flux')     
-
+print*,'Liran check here 00010_1'
           if ( history_aerosol ) then 
              if (history_verbose) then
                 call add_default (trim(cnst_name_cw(n))//'GVF', 1, ' ')
@@ -696,19 +696,19 @@ contains
                 call add_default (trim(cnst_name_cw(n))//'SFSBC', 1, ' ')
                 call add_default (trim(cnst_name_cw(n))//'SFSIS', 1, ' ')
              endif
-
+print*,'Liran check here 00010_2'
              if (get_presc_aero_data .or. history_verbose) then 
                 call add_default( cnst_name_cw(n), 1, ' ' )
              endif
-
+print*,'Liran check here 00010_3'
              call add_default (trim(cnst_name_cw(n))//'SFWET', 1, ' ') 
              call add_default (trim(cnst_name_cw(n))//'DDF', 1, ' ')
-
+print*,'Liran check here 00010_4'
           endif  
          
        endif
     enddo
-
+print*,'Liran check here 00010_5'
     do n=1,ntot_amode
        dgnum_name(n) = ' '
        write(dgnum_name(n),fmt='(a,i1)') 'dgnumwet',n
@@ -717,7 +717,7 @@ contains
           call add_default( dgnum_name(n), 1, ' ' )
        endif
     end do
-
+print*,'Liran check here 00010_6'
     ndx_h2so4 = get_spc_ndx('H2SO4')
 
     ! for aero_model_surfarea called from mo_usrrxt
@@ -734,6 +734,7 @@ contains
           call endrun(errmes)
        endif
     end do
+    print*,'Liran check here 00010_7'
     dgnumwet_idx = pbuf_get_index('DGNUMWET')
     if ( aitken_idx < 0 ) then
        errmes = 'usrrxt_inti: cannot find aitken_idx'
@@ -748,6 +749,7 @@ contains
     !
     ! accumulation mode #1
     !
+    print*,'Liran check here 00011'
     index_tot_mass(1,1) = get_spc_ndx('so4_a1')
     index_tot_mass(1,2) = get_spc_ndx('pom_a1')
     index_tot_mass(1,3) = get_spc_ndx('soa_a1')
@@ -772,11 +774,13 @@ contains
     index_tot_mass(3,2) = get_spc_ndx('ncl_a3')
     index_tot_mass(3,3) = get_spc_ndx('so4_a3')
     index_chm_mass(3,1) = get_spc_ndx('so4_a3')
+    print*,'Liran check here 00012'
     !
 #elif ( defined MODAL_AERO_4MODE_MOM )
     !
     ! accumulation mode #1
     !
+    print*,'Liran check here 00011_1'
     index_tot_mass(1,1) = get_spc_ndx('so4_a1')
     index_tot_mass(1,2) = get_spc_ndx('pom_a1')
     index_tot_mass(1,3) = get_spc_ndx('soa_a1')
@@ -810,11 +814,13 @@ contains
     index_tot_mass(4,2) = get_spc_ndx('bc_a4')
     index_tot_mass(4,3) = get_spc_ndx('mom_a4')
     index_chm_mass(4,1) = get_spc_ndx('bc_a1' )
+    print*,'Liran check here 00012_1'
     !
 #elif ( defined MODAL_AERO_4MODE )
     !
     ! accumulation mode #1
     !
+    print*,'Liran check here 00011_2'
     index_tot_mass(1,1) = get_spc_ndx('so4_a1')
     index_tot_mass(1,2) = get_spc_ndx('pom_a1')
     index_tot_mass(1,3) = get_spc_ndx('soa_a1')
@@ -845,6 +851,7 @@ contains
     index_tot_mass(4,1) = get_spc_ndx('pom_a4')
     index_tot_mass(4,2) = get_spc_ndx('bc_a4')
     index_chm_mass(4,1) = get_spc_ndx('bc_a1' )
+    print*,'Liran check here 00012_2'
     !
 #elif ( defined MODAL_AERO_5MODE )
     ! accumulation mode #1
@@ -1026,7 +1033,7 @@ contains
     index_tot_mass(9,3) = get_spc_ndx('mlip_a9')
     !
 #endif
-
+print*,'Liran check here 00013'
   end subroutine aero_model_init
 
   !=============================================================================

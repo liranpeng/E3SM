@@ -429,7 +429,7 @@ contains
           end if
        end if
     endif
-
+print*,'Liran trace check0'
     flds_loop: do f = 1,mxnflds
 
        ! initialize the coordinate values to -1,
@@ -451,7 +451,7 @@ contains
        else
           flds(f)%srf_fld = .true.
        endif
-
+print*,'Liran trace check1'
        ! allocate memory only if not already in pbuf2d
 
        if ( .not. file%in_pbuf(f) ) then 
@@ -507,7 +507,7 @@ contains
              call endrun
           end if
        endif
-
+print*,'Liran trace check2'
        if ( file%zonal_ave ) then
           ierr = pio_inq_vardimid (file%curr_fileid, flds(f)%var_id, dimids(1:3))
           do did = 1,3
@@ -560,13 +560,15 @@ contains
        flds(f)%units = data_units(1:32)
 
     enddo flds_loop
-
+print*,'Liran trace check3',file%weight_by_lat
 ! if weighting by latitude, compute weighting for horizontal interpolation
     if( file%weight_by_lat ) then
 ! get dimensions of CAM resolution
+print*,'Liran trace check3_0'
         plon = get_dyn_grid_parm('plon')
+print*,'Liran trace check3_1'
         plat = get_dyn_grid_parm('plat')
-        
+print*,'Liran trace check3_2'        
 ! weight_x & weight_y are weighting function for x & y interpolation
         allocate(file%weight_x(plon,file%nlon))
         allocate(file%weight_y(plat,file%nlat))
@@ -574,6 +576,7 @@ contains
         allocate(file%count_y(plat))
         allocate(file%index_x(plon,file%nlon))
         allocate(file%index_y(plat,file%nlat))
+print*,'Liran trace check3_3'        
         file%weight_x(:,:) = 0.0_r8
         file%weight_y(:,:) = 0.0_r8
         file%count_x(:) = 0
@@ -582,6 +585,7 @@ contains
         file%index_y(:,:) = 0
 
         if(masterproc) then
+print*,'Liran trace check4'                
 ! compute weighting 
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
 
@@ -605,7 +609,7 @@ contains
                enddo
             enddo
         endif
-
+print*,'Liran trace check5'
 #if ( defined SPMD)
         call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
         call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
@@ -614,6 +618,7 @@ contains
         call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
 #endif
+print*,'Liran trace check6'
     endif
 
   end subroutine trcdata_init

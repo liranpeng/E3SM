@@ -1823,9 +1823,9 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
       dp(:,:) = 0.
       dsubcld (:) = 1      ! layer thickness in mbs (between upper/lower interface).
       jt      (:) = 1      ! layer thickness in mbs between lcl and maxi.    
-      maxg    (:) = plev-1 ! top level index of deep cumulus convection.
+      maxg    (:) = pver-1 ! top level index of deep cumulus convection.
       ideep   (:) = 1      ! gathered values of maxi.
-      lengath = phys_state(c)%ncol
+      lengath = state%ncol
 
       ! Aerosol wet removal (including aerosol water uptake)
       call t_startf('aero_model_wetdep')

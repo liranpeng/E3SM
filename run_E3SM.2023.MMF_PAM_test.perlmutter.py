@@ -9,7 +9,7 @@ def run_cmd(cmd): print('\n'+clr.GREEN+cmd+clr.END) ; os.system(cmd); return
 newcase,config,build,clean,submit,continue_run = False,False,False,False,False,False
 
 acct = 'm3312'
-src_dir = os.getenv('HOME')+'/E3SM/E3SM_SRC2' # branch => whannah/mmf/pam-impl
+src_dir = os.getenv('HOME')+'/repositories/E3SM' # branch => whannah/mmf/pam-impl
 
 # clean        = True
 newcase      = True
@@ -22,6 +22,8 @@ debug_mode = False
 
 queue = 'regular'  # regular / debug 
 arch = 'GNUGPU' # GNUCPU / GNUGPU
+useECPP = 1
+usemam3 = 1
 
 # if queue=='debug'  : stop_opt,stop_n,resub,walltime = 'ndays',1, 0,'0:30:00'
 if queue=='regular': stop_opt,stop_n,resub,walltime = 'ndays',1,0,'1:00:00'
@@ -32,7 +34,7 @@ ne,npg,grid = 4,2,'ne4pg2_ne4pg2'; num_nodes = 1
 # compset = 'F2010-MMF1' # MMF+SAM
 compset = 'F2010-MMF2' # MMF+PAM
 
-case = '.'.join(['E3SM','2023-PAM-TEST',arch,grid,compset])
+case = '.'.join(['E3SM','2023-PAM-TEST0022',arch,grid,compset])
 
 if debug_mode: case += '.debug'
 
@@ -44,8 +46,8 @@ if 'CPU' in arch: max_mpi_per_node,atm_nthrds  = 128,1 ; max_task_per_node = 128
 if 'GPU' in arch: max_mpi_per_node,atm_nthrds  =   4,8 ; max_task_per_node = 32
 atm_ntasks = max_mpi_per_node*num_nodes
 
-if 'CPU' in arch: case_root = f'/pscratch/sd/w/{os.getenv("USER")}/e3sm_scratch/pm-cpu/{case}'
-if 'GPU' in arch: case_root = f'/pscratch/sd/w/{os.getenv("USER")}/e3sm_scratch/pm-gpu/{case}'
+if 'CPU' in arch: case_root = f'/pscratch/sd/h/{os.getenv("USER")}/e3sm_scratch/pm-cpu/{case}'
+if 'GPU' in arch: case_root = f'/pscratch/sd/h/{os.getenv("USER")}/e3sm_scratch/pm-gpu/{case}'
 
 #---------------------------------------------------------------------------------------------------
 if newcase :
@@ -78,6 +80,12 @@ if config :
    #-------------------------------------------------------
    if 'nlev'   in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -nlev {nlev} \" ')
    if 'crm_nz' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -crm_nz {crm_nz} \" ')
+   if 'useECPP' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -use_ECPP \" ')
+   if 'usemam3' in locals(): run_cmd(f'./xmlchange --id CAM_CONFIG_OPTS --val \" -chem linoz_mam4_resus_mom_soag\" ')
+  # if 'two_moment' in locals(): run_cmd(f'./xmlchange --id CAM_CONFIG_OPTS --val \" --MMF_microphysics_scheme m2005\" ')
+  # if 'one_moment' in locals(): run_cmd(f'./xmlchange --id CAM_CONFIG_OPTS --val \" --MMF_microphysics_scheme sam1mom\" ')
+#   run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -rain_evap_to_coarse_aero \" ')
+
    #-------------------------------------------------------
    # PE layout mods from Noel
    if 'CPU' in arch: cpl_stride = 8; cpl_ntasks = atm_ntasks / cpl_stride
@@ -124,6 +132,23 @@ if submit :
    file.write(          ",'OMEGA850:I','OMEGA500:I'")
    file.write(          ",'U200:I','V200:I'")
    file.write('\n')
+
+   file.write('\n')
+   file.write(" prescribed_aero_specifier = 'so4_c1','so4_c2','so4_c3','bc_c1','bc_c2','bc_c3','bc_a1','bc_a2','dst_c1','dst_c2','dst_c3'")
+   file.write('\n')
+   file.write(' se_tstep    = 200 \n')
+   file.write('\n')
+   file.write(" ext_frc_specifier              = 'SO2         -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_so2_elev_2000_c120315.nc',\n")
+   file.write("          'SOAG        -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_soag_1.5_surf_2000_c130422.nc',\n")
+   file.write("          'bc_a4       -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_bc_elev_2000_c120315.nc',\n")
+   file.write("          'num_a1      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam7_num_a1_elev_2000_c120716.nc',\n")
+   file.write("          'num_a2      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_num_a2_elev_2000_c120315.nc',\n")
+   file.write("          'num_a4      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam7_num_a3_elev_2000_c120716.nc',\n")
+   file.write("          'pom_a4      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_pom_elev_2000_c130422.nc',\n")
+   file.write("          'so4_a1      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_so4_a1_elev_2000_c120315.nc',\n")
+   file.write("          'so4_a2      -> /global/cfs/cdirs/e3sm/inputdata/atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_so4_a2_elev_2000_c120315.nc'\n")
+
+
    # # 3D variables
    # file.write(" fincl3 = 'PS','TS','PSL'")
    # file.write(          ",'T','Q','Z3'")                      # 3D thermodynamic budget components

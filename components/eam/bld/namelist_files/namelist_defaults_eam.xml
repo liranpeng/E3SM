@@ -870,6 +870,7 @@
 <MMF_microphysics_scheme MMF_microphysics_scheme="sam1mom">sam1mom</MMF_microphysics_scheme>
 <MMF_microphysics_scheme MMF_microphysics_scheme="m2005">m2005</MMF_microphysics_scheme>
 <MMF_microphysics_scheme MMF_microphysics_scheme="p3">p3</MMF_microphysics_scheme>
+<zmconv_microp use_MMF="1"    >.false.</zmconv_microp>
 <use_MMF                      > .false.</use_MMF>
 <use_MMF    use_MMF="1"       > .true. </use_MMF>
 <use_ECPP                     > .false.</use_ECPP>

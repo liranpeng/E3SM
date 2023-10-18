@@ -1802,46 +1802,46 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   !-----------------------------------------------------------------------------
   ! Aerosol stuff
   !-----------------------------------------------------------------------------
-  if (l_tracer_aero) then
-    if (use_ECPP) then
-      ! With MMF + ECPP we can skip the conventional aerosol routines
-    else
-      ! Aerosol wet chemistry determines scavenging and transformations.
-      ! This is followed by convective transport of all trace species except
-      ! water vapor and condensate. Scavenging needs to occur prior to
-      ! transport in order to determine interstitial fraction.
+  ! if (l_tracer_aero) then
+  !   if (use_ECPP) then
+  !     ! With MMF + ECPP we can skip the conventional aerosol routines
+  !   else
+  !     ! Aerosol wet chemistry determines scavenging and transformations.
+  !     ! This is followed by convective transport of all trace species except
+  !     ! water vapor and condensate. Scavenging needs to occur prior to
+  !     ! transport in order to determine interstitial fraction.
 
-      ! Without ECPP we should be using prescribed aerosols, so we only
-      ! need to consider the wet deposition and water uptake for radiation
+  !     ! Without ECPP we should be using prescribed aerosols, so we only
+  !     ! need to consider the wet deposition and water uptake for radiation
 
-      ! Temporary workaround for ECPP testing
-      mu(:,:) = 0.
-      eu(:,:) = 0.
-      du(:,:) = 0.
-      md(:,:) = 0.
-      ed(:,:) = 0.
-      dp(:,:) = 0.
-      dsubcld (:) = 1      ! layer thickness in mbs (between upper/lower interface).
-      jt      (:) = 1      ! layer thickness in mbs between lcl and maxi.    
-      maxg    (:) = pver-1 ! top level index of deep cumulus convection.
-      ideep   (:) = 1      ! gathered values of maxi.
-      lengath = state%ncol
+  !     ! Temporary workaround for ECPP testing
+  !     mu(:,:) = 0.
+  !     eu(:,:) = 0.
+  !     du(:,:) = 0.
+  !     md(:,:) = 0.
+  !     ed(:,:) = 0.
+  !     dp(:,:) = 0.
+  !     dsubcld (:) = 1      ! layer thickness in mbs (between upper/lower interface).
+  !     jt      (:) = 1      ! layer thickness in mbs between lcl and maxi.    
+  !     maxg    (:) = pver-1 ! top level index of deep cumulus convection.
+  !     ideep   (:) = 1      ! gathered values of maxi.
+  !     lengath = state%ncol
 
-      ! Aerosol wet removal (including aerosol water uptake)
-      call t_startf('aero_model_wetdep')
-      call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state,  & ! inputs
-              sh_e_ed_ratio, mu, md, du, eu, ed, dp, dsubcld,    &
-              jt, maxg, ideep, lengath, species_class,           &
-              cam_out, pbuf, ptend,                              & ! outputs
-              clear_rh=mmf_clear_rh) ! clear air relative humidity for water uptake
-      call physics_update(state, ptend, ztodt, tend)
-      call t_stopf('aero_model_wetdep')
+  !     ! Aerosol wet removal (including aerosol water uptake)
+  !     call t_startf('aero_model_wetdep')
+  !     call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state,  & ! inputs
+  !             sh_e_ed_ratio, mu, md, du, eu, ed, dp, dsubcld,    &
+  !             jt, maxg, ideep, lengath, species_class,           &
+  !             cam_out, pbuf, ptend,                              & ! outputs
+  !             clear_rh=mmf_clear_rh) ! clear air relative humidity for water uptake
+  !     call physics_update(state, ptend, ztodt, tend)
+  !     call t_stopf('aero_model_wetdep')
 
-      ! check tracer integrals
-      call check_tracers_chng(state, tracerint, "aero_model_wetdep", nstep, ztodt,  zero_tracers)
+  !     ! check tracer integrals
+  !     call check_tracers_chng(state, tracerint, "aero_model_wetdep", nstep, ztodt,  zero_tracers)
 
-    end if
-  end if ! l_tracer_aero
+  !   end if
+  ! end if ! l_tracer_aero
 
   !-----------------------------------------------------------------------------
   ! Moist physical parameteriztions complete: 

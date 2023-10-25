@@ -142,7 +142,12 @@ extern "C" void pam_driver() {
   #elif defined(MMF_PAM_DYCOR_AWFL)
     dycore.declare_current_profile_as_hydrostatic(coupler,/*use_gcm_data=*/true);
   #endif
-
+  printf("Liran check pam_driver 0.\n");
+  #if defined(ECPP)
+    printf("Liran check pam_driver 1.\n");
+    ecpp_crm_init(coupler);
+  #endif
+  printf("Liran check pam_driver 2.\n");
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------

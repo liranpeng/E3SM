@@ -23,7 +23,14 @@ else()
   set(PIOLIBS "${PIO_LIBDIR}/libpio.a")
 endif()
 
+# Handle gptl. Just hardcode it for now.
+list(APPEND PIOLIBS "${INSTALL_SHAREDPATH}/lib/libgptl.a")
+
 find_package(NETCDF REQUIRED)
+# Check if scorpio has hdf5 enabled
+if (DEFINED ENV{HDF5_ROOT})
+  find_package(HDF5 REQUIRED COMPONENTS C HL)
+endif()
 
 # Not all machines/PIO installations use ADIOS but, for now,
 # we can assume that an MPI case with ADIOS2_ROOT set is probably
@@ -38,6 +45,13 @@ list(APPEND PIOLIBS netcdf)
 
 if (MPILIB STREQUAL "mpi-serial")
   list(APPEND PIOLIBS "${INSTALL_SHAREDPATH}/lib/libmpi-serial.a")
+else()
+  find_package(MPI REQUIRED COMPONENTS C Fortran)
+  list(APPEND PIOLIBS MPI::MPI_C MPI::MPI_Fortran)
+endif()
+
+if (DEFINED ENV{HDF5_ROOT})
+  list(APPEND PIOLIBS ${HDF5_HL_LIBRARIES} ${HDF5_LIBRARIES})
 endif()
 
 # Create the interface library, and set target properties

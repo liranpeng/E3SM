@@ -12,7 +12,7 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   auto &dm_device = coupler.get_data_manager_device_readwrite();
   auto &dm_host   = coupler.get_data_manager_host_readwrite();
   auto nens       = coupler.get_option<int>("ncrms");
-  auto nzm        = coupler.get_option<int>("crm_nz");  // Note that nzm   = crm_nz
+  auto nz         = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
@@ -24,7 +24,7 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
 
   int nxstag = nx + 1;
   int nystag = ny + 1;
-  int nzstag = nzm + 1;
+  int nzstag = nz + 1;
 
   int mode_updnthresh = 16;
 /*
@@ -139,43 +139,43 @@ auto dndraftbase  = dm_device.get<real,1>("dndraftbase");
  printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
     updraftbase(icrm) = 0;
-    updrafttop(icrm) = nzm - 1;
-    dndrafttop(icrm) = nzm - 1;
+    updrafttop(icrm) = nz - 1;
+    dndrafttop(icrm) = nz - 1;
     dndraftbase(icrm) = 0;
 }
  printf("Liran check start ECPP allocation here\n");
 // 4D vector allocations
 
-dm_device.register_and_allocate<real>("qlsink_bf" , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("prain"     , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qcloud_bf" , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qcloudsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qcloud_bfsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qrainsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qicesum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qsnowsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qgraupsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qlsinksum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("precrsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("precsolidsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("precallsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("altsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("rhsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("cf3dsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-//dm_device.register_and_allocate<real>("wwsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
-//dm_device.register_and_allocate<real>("wwsqsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
-dm_device.register_and_allocate<real>("tkesgssum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("prainsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
-dm_device.register_and_allocate<real>("qvssum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qlsink_bf" , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("prain"     , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloud_bf" , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloudsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloud_bfsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qrainsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qicesum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qsnowsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qgraupsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qlsinksum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precrsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precsolidsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precallsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("altsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("rhsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("cf3dsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+//dm_device.register_and_allocate<real>("wwsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
+//dm_device.register_and_allocate<real>("wwsqsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
+dm_device.register_and_allocate<real>("tkesgssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("prainsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qvssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 // 2D vectors
-dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nzm,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nzm,nens}, {"z","nens"});
-//dm_device.register_and_allocate<real>("wwqui_bnd_sum", "<description>", {nzm,nens}, {"z","nens"}); //nzm+1
-dm_device.register_and_allocate<real>("wwqui_cloudy_cen_sum", "<description>", {nzm,nens}, {"z","nens"});
-//dm_device.register_and_allocate<real>("wwqui_cloudy_bnd_sum", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
-//dm_device.register_and_allocate<real>("wup_thresh", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
-//dm_device.register_and_allocate<real>("wdown_thresh", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
+dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nz,nens}, {"z","nens"});
+//dm_device.register_and_allocate<real>("wwqui_bnd_sum", "<description>", {nz,nens}, {"z","nens"}); //nz+1
+dm_device.register_and_allocate<real>("wwqui_cloudy_cen_sum", "<description>", {nz,nens}, {"z","nens"});
+//dm_device.register_and_allocate<real>("wwqui_cloudy_bnd_sum", "<description>", {nz,nens}, {"z","nens"});//nz+1
+//dm_device.register_and_allocate<real>("wup_thresh", "<description>", {nz,nens}, {"z","nens"});//nz+1
+//dm_device.register_and_allocate<real>("wdown_thresh", "<description>", {nz,nens}, {"z","nens"});//nz+1
 printf("Liran check ECPP allocation done the first part\n");
 
 auto qlsink_bf           = dm_device.get<real,4>("qlsink_bf");
@@ -211,7 +211,7 @@ auto wwqui_cloudy_cen_sum = dm_device.get<real,2>("wwqui_cloudy_cen_sum");
 
 printf("Liran check start ECPP init 0 here\n");
 // Initialization of 4D variables
-parallel_for(SimpleBounds<4>(nzm,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
+parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
   qlsink_bf(iz,iy,ix,iens)          = 0;
   prain(iz,iy,ix,iens)              = 0;
   qcloud_bf(iz,iy,ix,iens)          = 0;
@@ -237,14 +237,14 @@ parallel_for(SimpleBounds<4>(nzm,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int i
 });
 printf("Liran check start ECPP init 1 here\n");
 // Initialization of 2D variables
-parallel_for(SimpleBounds<2>(nzm,nens), YAKL_LAMBDA (int iz, int iens) {
+parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   xkhvsum(iz,iens)                 = 0;
   wwqui_cen_sum(iz,iens)           = 0;
-  //wwqui_bnd_sum(iz,iens)           = 0;  // Note: This might need adjustment for nzm+1 dimension
+  //wwqui_bnd_sum(iz,iens)           = 0;  // Note: This might need adjustment for nz+1 dimension
   wwqui_cloudy_cen_sum(iz,iens)    = 0;
-  //wwqui_cloudy_bnd_sum(iz,iens)    = 0;  // Note: This might need adjustment for nzm+1 dimension
-  //wup_thresh(iz,iens)              = 0;  // Note: This might need adjustment for nzm+1 dimension
-  //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nzm+1 dimension
+  //wwqui_cloudy_bnd_sum(iz,iens)    = 0;  // Note: This might need adjustment for nz+1 dimension
+  //wup_thresh(iz,iens)              = 0;  // Note: This might need adjustment for nz+1 dimension
+  //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nz+1 dimension
 });
 
   printf("Liran check start ECPP init end here\n");
@@ -260,7 +260,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
   auto &dm_device = coupler.get_data_manager_device_readwrite();
   auto &dm_host   = coupler.get_data_manager_host_readwrite();
   auto nens       = coupler.get_option<int>("ncrms");
-  auto nzm        = coupler.get_option<int>("crm_nz");  // Note that nzm   = crm_nz
+  auto nz        = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
@@ -308,12 +308,11 @@ printf("Liran check start ecpp_crm_stat 00\n");
   auto state_qc                 = dm_host.get<real const,4>("state_qc").createDeviceCopy();
   auto state_qr                 = dm_host.get<real const,4>("state_qr").createDeviceCopy();
   auto state_qi                 = dm_host.get<real const,4>("state_qi").createDeviceCopy();
-
   auto crm_temp                 = dm_device.get<real,4>("temp");
-  auto qcloud                   = dm_device.get<real,4>("water_vapor");
-  auto crm_rho_c                = dm_device.get<real,4>("cloud_water");
-  auto crm_rho_r                = dm_device.get<real,4>("rain");
-  auto crm_rho_i                = dm_device.get<real,4>("ice");
+  auto qvloud                   = dm_device.get<real,4>("water_vapor");
+  auto qcloud                   = dm_device.get<real,4>("cloud_water");
+  auto qrloud                   = dm_device.get<real,4>("rain");
+  auto qiloud                   = dm_device.get<real,4>("ice");
 // Increment the 3-D running sums for averaging period 1.
 // Increments 3-D running sums for the variables averaged every
 // ntavg1_mm minutes.  
@@ -322,7 +321,7 @@ printf("Liran check start ECPP ecpp_crm_stat 01\n");
 esat_test = esatw_crm(T_test);
 printf("%s %.2f\n", "Liran check evp:", esat_test);
 parallel_for( "update sums",
-              SimpleBounds<4>(nzm, ny, nx, nens),
+              SimpleBounds<4>(nz, ny, nx, nens),
               YAKL_LAMBDA (int k, int j, int i, int icrm) {
 
     qcloudsum1(k,j,i,icrm) += qcloud(k,j,i,icrm);

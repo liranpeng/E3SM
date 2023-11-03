@@ -2,9 +2,9 @@
 
 #include "pam_coupler.h"
 #include "Dycore.h"
-#include <vector>
+#include "sat.h"
 // #include "ecppvars.h"
-
+// =========================================================================|ecpp_crm_init|=========
 // allocate and initialize variables
 inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   using yakl::c::parallel_for;
@@ -74,7 +74,6 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
 
   int itavg1 = 0;
   int itavg2 = 0; // level-1 and level-2 counters
-
   // variables should inside ecppvars.h
   int DN1 = 0; // !First index of downward classes
   int NCLASS_TR = 0; // !Num. of transport classes
@@ -83,13 +82,8 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int NCLASS_CL = ncc_in; // Number of cloud classes
   int NCLASS_PR = nprcp_in; // Number of precipitaion classes
 
-  std::vector<std::vector<int>> updraftbase;
-  std::vector<std::vector<int>> updrafttop;
-  std::vector<std::vector<int>> dndrafttop;
-  std::vector<std::vector<int>> dndraftbase;
-
-  printf("Liran check start ECPP init\n");
-
+   printf("Liran check start ECPP init\n");
+ 
 // Sanity check... <not included NEED TO ADD LATER!!!!>
 // Line 182 to line 210
 
@@ -112,34 +106,8 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
    1 <= kbase < ktop < nzstag
 */
 
-switch (plumetype) {
-    case 1:  // single plume
-        nupdraft = 1;
-        ndndraft = 1;
-        break;
-    case 2:  // core and weak plumes
-        nupdraft = 2;
-        ndndraft = 2;
-        break;
-    case 3:
-        for (int kbase = 1; kbase < nzm; ++kbase) {
-            if (allcomb) {  // all possible tops
-                nupdraft += nzm - kbase;
-            } else {        // one top per base
-                nupdraft += 1;
-            }
-        }
-        for (int ktop = nzm; ktop >= 2; --ktop) {
-            if (allcomb) {  // all possible bases
-                ndndraft += ktop - 1;
-            } else {        // one base per top
-                ndndraft += 1;
-            }
-        }
-        break;
-    // Optionally handle other cases or a default if necessary
-}
-
+nupdraft = 1;
+ndndraft = 1;
 
 nupdraft_max = std::max(nupdraft_max, nupdraft);
 ndndraft_max = std::max(ndndraft_max, ndndraft);
@@ -154,198 +122,249 @@ printf("\nValue of DN1: %d: ", DN1);
 printf("\nValue of NCLASS_TR: %d: ", NCLASS_TR);
 printf("\nValue of ndraft_max: %d: ", ndraft_max);
 printf("\nValue of plumetype: %d: ", plumetype);
+printf("\nValue of nzstag: %d: ", nzstag);
+printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
+printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
+printf("\nValue of nens: %d: ", nens);
 
-updraftbase.resize(nupdraft_max, std::vector<int>(nens));
-updrafttop.resize(nupdraft_max, std::vector<int>(nens));
+dm_device.register_and_allocate<real>("updraftbase", "<description>", {nens}, {"nens"});
+dm_device.register_and_allocate<real>("updrafttop", "<description>", {nens}, {"nens"});
+dm_device.register_and_allocate<real>("dndrafttop", "<description>", {nens}, {"nens"});
+dm_device.register_and_allocate<real>("dndraftbase", "<description>", {nens}, {"nens"});
 
-
+auto updraftbase  = dm_device.get<real,1>("updraftbase");
+auto updrafttop   = dm_device.get<real,1>("updrafttop");
+auto dndrafttop   = dm_device.get<real,1>("dndrafttop");
+auto dndraftbase  = dm_device.get<real,1>("dndraftbase");
+ printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
-    switch (plumetype) {
-        case 1:  // single plume
-            updraftbase[0][icrm] = 0;
-            updrafttop[0][icrm] = nzm - 1;
-            dndrafttop[0][icrm] = nzm - 1;
-            dndraftbase[0][icrm] = 0;
-            break;
-
-        case 2:
-            for (int i = 0; i < 2; ++i) {
-                updraftbase[i][icrm] = 0;
-                updrafttop[i][icrm] = nzm - 1;
-                dndrafttop[i][icrm] = nzm - 1;
-                dndraftbase[i][icrm] = 0;
-            }
-            break;
-
-        case 3:
-            m = 0;
-            for (int kbase = 0; kbase < nzm - 1; ++kbase) {
-                if (allcomb) { // loop over all possible tops.
-                    for (int ktop = kbase + 1; ktop < nzm; ++ktop) {
-                        updraftbase[m][icrm] = kbase;
-                        updrafttop[m][icrm] = ktop;
-                        m++;
-                    }
-                } else { // only one top per base
-                    updraftbase[m][icrm] = kbase;
-                    updrafttop[m][icrm] = nzm - 1;
-                    m++;
-                }
-            }
-
-            m = 0;
-            for (int ktop = nzm - 1; ktop >= 1; --ktop) {
-                if (allcomb) { // loop over all possible bases.
-                    for (int kbase = ktop - 1; kbase >= 0; --kbase) {
-                        dndrafttop[m][icrm] = ktop;
-                        dndraftbase[m][icrm] = kbase;
-                        m++;
-                    }
-                } else { // only one base per top
-                    dndrafttop[m][icrm] = ktop;
-                    dndraftbase[m][icrm] = 0;
-                    m++;
-                }
-            }
-            break;
-    }
+    updraftbase(icrm) = 0;
+    updrafttop(icrm) = nzm - 1;
+    dndrafttop(icrm) = nzm - 1;
+    dndraftbase(icrm) = 0;
 }
-
+ printf("Liran check start ECPP allocation here\n");
 // 4D vector allocations
-std::vector<std::vector<std::vector<std::vector<double>>>> qlsink(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> precr(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> precsolid(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> rh(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qvs(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
 
-std::vector<std::vector<std::vector<std::vector<double>>>> qlsink_bf(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> prain(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qcloud_bf(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
+dm_device.register_and_allocate<real>("qlsink_bf" , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("prain"     , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloud_bf" , "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloudsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qcloud_bfsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qrainsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qicesum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qsnowsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qgraupsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qlsinksum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precrsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precsolidsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("precallsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("altsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("rhsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("cf3dsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+//dm_device.register_and_allocate<real>("wwsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
+//dm_device.register_and_allocate<real>("wwsqsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
+dm_device.register_and_allocate<real>("tkesgssum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("prainsum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("qvssum1", "<description>", {nzm,ny,nx,nens}, {"z","y","x","nens"});
+// 2D vectors
+dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nzm,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nzm,nens}, {"z","nens"});
+//dm_device.register_and_allocate<real>("wwqui_bnd_sum", "<description>", {nzm,nens}, {"z","nens"}); //nzm+1
+dm_device.register_and_allocate<real>("wwqui_cloudy_cen_sum", "<description>", {nzm,nens}, {"z","nens"});
+//dm_device.register_and_allocate<real>("wwqui_cloudy_bnd_sum", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
+//dm_device.register_and_allocate<real>("wup_thresh", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
+//dm_device.register_and_allocate<real>("wdown_thresh", "<description>", {nzm,nens}, {"z","nens"});//nzm+1
+printf("Liran check ECPP allocation done the first part\n");
 
-std::vector<std::vector<std::vector<std::vector<double>>>> qcloudsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qcloud_bfsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qrainsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qicesum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qsnowsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qgraupsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qlsinksum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> precrsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> precsolidsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> precallsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> altsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> rhsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> cf3dsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> wwsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzstag, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> wwsqsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzstag, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> tkesgssum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qlsink_bfsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> prainsum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
-std::vector<std::vector<std::vector<std::vector<double>>>> qvssum1(nx, std::vector<std::vector<std::vector<double>>>(ny, std::vector<std::vector<double>>(nzm, std::vector<double>(nens))));
+auto qlsink_bf           = dm_device.get<real,4>("qlsink_bf");
+auto prain               = dm_device.get<real,4>("prain");
+auto qcloud_bf           = dm_device.get<real,4>("qcloud_bf");
+auto qcloudsum1          = dm_device.get<real,4>("qcloudsum1");
+auto qcloud_bfsum1       = dm_device.get<real,4>("qcloud_bfsum1");
+auto qrainsum1           = dm_device.get<real,4>("qrainsum1");
+auto qicesum1            = dm_device.get<real,4>("qicesum1");
+auto qsnowsum1           = dm_device.get<real,4>("qsnowsum1");
+auto qgraupsum1          = dm_device.get<real,4>("qgraupsum1");
+auto qlsinksum1          = dm_device.get<real,4>("qlsinksum1");
+auto precrsum1           = dm_device.get<real,4>("precrsum1");
+auto precsolidsum1       = dm_device.get<real,4>("precsolidsum1");
+auto precallsum1         = dm_device.get<real,4>("precallsum1");
+auto altsum1             = dm_device.get<real,4>("altsum1");
+auto rhsum1              = dm_device.get<real,4>("rhsum1");
+auto cf3dsum1            = dm_device.get<real,4>("cf3dsum1");
+//auto wwsum1              = dm_device.get<real,4>("wwsum1");
+//auto wwsqsum1            = dm_device.get<real,4>("wwsqsum1");
+auto tkesgssum1          = dm_device.get<real,4>("tkesgssum1");
+auto qlsink_bfsum1       = dm_device.get<real,4>("qlsink_bfsum1");
+auto prainsum1           = dm_device.get<real,4>("prainsum1");
+auto qvssum1             = dm_device.get<real,4>("qvssum1");
 
-std::vector<std::vector<double>> xkhvsum(nzm, std::vector<double>(nens));
+auto xkhvsum              = dm_device.get<real,2>("xkhvsum");
+auto wwqui_cen_sum        = dm_device.get<real,2>("wwqui_cen_sum");
+//auto wwqui_bnd_sum        = dm_device.get<real,2>("wwqui_bnd_sum");            // Note: Adjust dimensionality if needed
+auto wwqui_cloudy_cen_sum = dm_device.get<real,2>("wwqui_cloudy_cen_sum");
+//auto wwqui_cloudy_bnd_sum = dm_device.get<real,2>("wwqui_cloudy_bnd_sum");     // Note: Adjust dimensionality if needed
+//auto wup_thresh           = dm_device.get<real,2>("wup_thresh");               // Note: Adjust dimensionality if needed
+//auto wdown_thresh         = dm_device.get<real,2>("wdown_thresh");             // Note: Adjust dimensionality if needed
 
-std::vector<std::vector<double>> wwqui_cen_sum(nzm, std::vector<double>(nens));
-std::vector<std::vector<double>> wwqui_bnd_sum(nzm+1, std::vector<double>(nens));
-std::vector<std::vector<double>> wwqui_cloudy_cen_sum(nzm, std::vector<double>(nens));
-std::vector<std::vector<double>> wwqui_cloudy_bnd_sum(nzm+1, std::vector<double>(nens));
-
-std::vector<std::vector<double>> wup_thresh(nzm+1, std::vector<double>(nens));
-std::vector<std::vector<double>> wdown_thresh(nzm+1, std::vector<double>(nens));
-
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    area_bnd_final(nzstag, std::vector<std::vector<std::vector<std::vector<double>>>>
-        (NCLASS_CL, std::vector<std::vector<std::vector<double>>>
-            (ndraft_max, std::vector<std::vector<double>>
-                (NCLASS_PR, std::vector<double>(nens)))));
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    area_bnd_sum = area_bnd_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    area_cen_final(nzm, std::vector<std::vector<std::vector<std::vector<double>>>>
-        (NCLASS_CL, std::vector<std::vector<std::vector<double>>>
-            (ndraft_max, std::vector<std::vector<double>>
-                (NCLASS_PR, std::vector<double>(nens)))));
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    area_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    mass_bnd_final = area_bnd_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    mass_bnd_sum = area_bnd_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    mass_cen_final = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    mass_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    ent_bnd_sum = area_bnd_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    rh_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qcloud_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qcloud_bf_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qrain_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qice_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qsnow_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qgraup_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qlsink_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    precr_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    precsolid_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    precall_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qlsink_bf_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    qlsink_avg_cen_sum = area_cen_final;
-
-std::vector<std::vector<std::vector<std::vector<std::vector<double>>>>> 
-    prain_cen_sum = area_cen_final;
-
-
-/*
-
-All the variables listed here are already initialized to zero. 
-In C++, when you use the std::vector constructor that takes a size and 
-a default value (like you've done), it initializes all the elements 
-with that default value. In your case, the default value is another 
-vector, which itself is constructed with a size and a default value, 
-and so on. For the innermost vector, the default value is of type 
-double, which is initialized to zero.
-
-No need to call zero_out_sums1
-
-*/
-
-
+printf("Liran check start ECPP init 0 here\n");
+// Initialization of 4D variables
+parallel_for(SimpleBounds<4>(nzm,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
+  qlsink_bf(iz,iy,ix,iens)          = 0;
+  prain(iz,iy,ix,iens)              = 0;
+  qcloud_bf(iz,iy,ix,iens)          = 0;
+  qcloudsum1(iz,iy,ix,iens)         = 0;
+  qcloud_bfsum1(iz,iy,ix,iens)      = 0;
+  qrainsum1(iz,iy,ix,iens)          = 0;
+  qicesum1(iz,iy,ix,iens)           = 0;
+  qsnowsum1(iz,iy,ix,iens)          = 0;
+  qgraupsum1(iz,iy,ix,iens)         = 0;
+  qlsinksum1(iz,iy,ix,iens)         = 0;
+  precrsum1(iz,iy,ix,iens)          = 0;
+  precsolidsum1(iz,iy,ix,iens)      = 0;
+  precallsum1(iz,iy,ix,iens)        = 0;
+  altsum1(iz,iy,ix,iens)            = 0;
+  rhsum1(iz,iy,ix,iens)             = 0;
+  cf3dsum1(iz,iy,ix,iens)           = 0;
+  //wwsum1(iz,iy,ix,iens)             = 0;
+  //wwsqsum1(iz,iy,ix,iens)           = 0;
+  tkesgssum1(iz,iy,ix,iens)         = 0;
+  qlsink_bfsum1(iz,iy,ix,iens)      = 0;
+  prainsum1(iz,iy,ix,iens)          = 0;
+  qvssum1(iz,iy,ix,iens)            = 0;
+});
+printf("Liran check start ECPP init 1 here\n");
+// Initialization of 2D variables
+parallel_for(SimpleBounds<2>(nzm,nens), YAKL_LAMBDA (int iz, int iens) {
+  xkhvsum(iz,iens)                 = 0;
+  wwqui_cen_sum(iz,iens)           = 0;
+  //wwqui_bnd_sum(iz,iens)           = 0;  // Note: This might need adjustment for nzm+1 dimension
+  wwqui_cloudy_cen_sum(iz,iens)    = 0;
+  //wwqui_cloudy_bnd_sum(iz,iens)    = 0;  // Note: This might need adjustment for nzm+1 dimension
+  //wup_thresh(iz,iens)              = 0;  // Note: This might need adjustment for nzm+1 dimension
+  //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nzm+1 dimension
+});
 
   printf("Liran check start ECPP init end here\n");
 
 }
+
+
+// =========================================================================|ecpp_crm_stat|=========
+// allocate and initialize variables
+inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
+  using yakl::c::parallel_for;
+  using yakl::c::SimpleBounds;
+  auto &dm_device = coupler.get_data_manager_device_readwrite();
+  auto &dm_host   = coupler.get_data_manager_host_readwrite();
+  auto nens       = coupler.get_option<int>("ncrms");
+  auto nzm        = coupler.get_option<int>("crm_nz");  // Note that nzm   = crm_nz
+  auto nx         = coupler.get_option<int>("crm_nx");
+  auto ny         = coupler.get_option<int>("crm_ny");
+  auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
+printf("Liran check start ecpp_crm_stat 00\n");
+  //------------------------------------------------------------------------------------------------
+  // get variables allocated in ecpp_crm_init
+  auto qcloudsum1 = dm_device.get<real, 4>("qcloudsum1");
+  auto qcloud_bfsum1 = dm_device.get<real, 4>("qcloud_bfsum1");
+  auto qrainsum1 = dm_device.get<real, 4>("qrainsum1");
+  auto qicesum1 = dm_device.get<real, 4>("qicesum1");
+  auto qsnowsum1 = dm_device.get<real, 4>("qsnowsum1");
+  auto qgraupsum1 = dm_device.get<real, 4>("qgraupsum1");
+  auto qlsinksum1 = dm_device.get<real, 4>("qlsinksum1");
+  auto precrsum1 = dm_device.get<real, 4>("precrsum1");
+  auto precsolidsum1 = dm_device.get<real, 4>("precsolidsum1");
+  auto precallsum1 = dm_device.get<real, 4>("precallsum1");
+  auto altsum1 = dm_device.get<real, 4>("altsum1");
+  auto rhsum1 = dm_device.get<real, 4>("rhsum1");
+  auto cf3dsum1 = dm_device.get<real, 4>("cf3dsum1");
+  //auto wwsum1 = dm_device.get<real, 4>("wwsum1");
+  //auto wwsqsum1 = dm_device.get<real, 4>("wwsqsum1");
+  auto tkesgssum1 = dm_device.get<real, 4>("tkesgssum1");
+  auto qlsink_bfsum1 = dm_device.get<real, 4>("qlsink_bfsum1");
+  auto prainsum1 = dm_device.get<real, 4>("prainsum1");
+  auto qvssum1 = dm_device.get<real, 4>("qvssum1");
+  //------------------------------------------------------------------------------------------------
+  printf("Liran check start ecpp_crm_stat 01\n");
+
+/* 
+!------------------------------------------------------------------------
+! Main code section...
+!------------------------------------------------------------------------
+*/
+  double T_test = 283.14;
+  double esat_test = 0;
+  double polysvp(double T, int TYPE);
+// Get values from PAM cloud fields
+  auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk");
+  auto host_state_shoc_tkh      = dm_host.get<real,4>("state_shoc_tkh");
+  auto host_state_qv            = dm_host.get<real,4>("state_qv");
+  auto host_state_qc            = dm_host.get<real,4>("state_qc");
+  auto host_state_qr            = dm_host.get<real,4>("state_qr");
+  auto host_state_qi            = dm_host.get<real,4>("state_qi");
+  auto state_qv                 = dm_host.get<real const,4>("state_qv").createDeviceCopy();
+  auto state_qc                 = dm_host.get<real const,4>("state_qc").createDeviceCopy();
+  auto state_qr                 = dm_host.get<real const,4>("state_qr").createDeviceCopy();
+  auto state_qi                 = dm_host.get<real const,4>("state_qi").createDeviceCopy();
+
+  auto crm_temp                 = dm_device.get<real,4>("temp");
+  auto qcloud                   = dm_device.get<real,4>("water_vapor");
+  auto crm_rho_c                = dm_device.get<real,4>("cloud_water");
+  auto crm_rho_r                = dm_device.get<real,4>("rain");
+  auto crm_rho_i                = dm_device.get<real,4>("ice");
+// Increment the 3-D running sums for averaging period 1.
+// Increments 3-D running sums for the variables averaged every
+// ntavg1_mm minutes.  
+
+printf("Liran check start ECPP ecpp_crm_stat 01\n");
+esat_test = esatw_crm(T_test);
+printf("%s %.2f\n", "Liran check evp:", esat_test);
+parallel_for( "update sums",
+              SimpleBounds<4>(nzm, ny, nx, nens),
+              YAKL_LAMBDA (int k, int j, int i, int icrm) {
+
+    qcloudsum1(k,j,i,icrm) += qcloud(k,j,i,icrm);
+    //qcloud_bfsum1[i][j][k][icrm] += qcloud_bf[i][j][k][icrm];
+    //qrainsum1[i][j][k][icrm] += qrain[i][j][k][icrm];
+    //qicesum1[i][j][k][icrm] += qice[i][j][k][icrm];
+    //qsnowsum1[i][j][k][icrm] += qsnow[i][j][k][icrm];
+    //qgraupsum1[i][j][k][icrm] += qgraup[i][j][k][icrm];
+    //qlsinksum1[i][j][k][icrm] += qlsink[i][j][k][icrm] * qcloud[i][j][k][icrm];
+    //precrsum1[i][j][k][icrm] += precr[i][j][k][icrm];
+    //precsolidsum1[i][j][k][icrm] += precsolid[i][j][k][icrm];
+    //precallsum1[i][j][k][icrm] += precall[i][j][k][icrm];
+    //altsum1[i][j][k][icrm] += alt[i][j][k][icrm];
+    //rhsum1[i][j][k][icrm] += rh[i][j][k][icrm];
+    //cf3dsum1[i][j][k][icrm] += cf3d[icrm][i][j][k];
+    //wwsum1[i][j][k][icrm] += ww[i][j][k][icrm];
+    //wwsqsum1[i][j][k][icrm] += wwsq[i][j][k][icrm];
+    //tkesgssum1[i][j][k][icrm] += tkesgs[i][j][k][icrm];
+    //qlsink_bfsum1[i][j][k][icrm] += qlsink_bf[i][j][k][icrm] * qcloud_bf[i][j][k][icrm];
+    //prainsum1[i][j][k][icrm] += prain[i][j][k][icrm];
+    //qvssum1[i][j][k][icrm] += qvs[icrm][i][j][k];
+
+});
+
+printf("Liran check start ECPP ecpp_crm_stat 02\n");
+// Increment the running sums for the level two variables that are not
+// already incremented. Consolidate from 3-D to 1-D columns.
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

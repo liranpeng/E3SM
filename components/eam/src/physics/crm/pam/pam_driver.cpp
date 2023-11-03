@@ -13,6 +13,7 @@
 #include "pam_statistics.h"
 #include "pam_output.h"
 #include "pam_accelerate.h"
+#include "pam_ecpp.h"
 #include "sponge_layer.h"
 #include "surface_friction.h"
 #include "scream_cxx_interface_finalize.h"
@@ -205,6 +206,13 @@ extern "C" void pam_driver() {
     coupler.run_module( "micro", [&] (pam::PamCoupler &coupler) {micro .timeStep(coupler);} );
     if (enable_physics_tend_stats) { pam_statistics_aggregate_tendency(coupler,"micro"); }
     if (enable_check_state)        { pam_debug_check_state(coupler, 6, nstep); }
+
+    printf("Liran check ecpp_crm_stat 0.\n");
+    #if defined(ECPP)
+      printf("Liran check ecpp_crm_stat 1.\n");
+      ecpp_crm_stat(coupler);
+    #endif
+    printf("Liran check ecpp_crm_stat 2.\n");
 
     // CRM mean state acceleration
     if (use_crm_accel && !coupler.get_option<bool>("crm_acceleration_ceaseflag")) {

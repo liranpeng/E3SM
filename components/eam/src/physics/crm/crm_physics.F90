@@ -1446,6 +1446,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('crm_dy',crm_dy )
       call pam_set_option('gcm_dt',ztodt )
       call pam_set_option('crm_dt',crm_dt )
+      call pam_set_option('ecpp_itavg1',0 )
+      call pam_set_option('ecpp_itavg2',0 )
+      call pam_set_option('ecpp_ntavg1',0 )
+      call pam_set_option('ecpp_ntavg2',0 )
 
       call pam_register_dimension('gcm_lev',pver)
 

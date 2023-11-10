@@ -9,14 +9,22 @@
 inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   using yakl::c::parallel_for;
   using yakl::c::SimpleBounds;
-  auto &dm_device = coupler.get_data_manager_device_readwrite();
-  auto &dm_host   = coupler.get_data_manager_host_readwrite();
-  auto nens       = coupler.get_option<int>("ncrms");
-  auto nz         = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
-  auto nx         = coupler.get_option<int>("crm_nx");
-  auto ny         = coupler.get_option<int>("crm_ny");
-  auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
-
+  printf("Liran check start ECPP init\n");
+  auto &dm_device   = coupler.get_data_manager_device_readwrite();
+  auto &dm_host     = coupler.get_data_manager_host_readwrite();
+  auto nens         = coupler.get_option<int>("ncrms");
+  auto nz           = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
+  auto nx           = coupler.get_option<int>("crm_nx");
+  auto ny           = coupler.get_option<int>("crm_ny");
+  auto gcm_nlev     = coupler.get_option<int>("gcm_nlev");
+  auto itavg1       = coupler.get_option<int>("ecpp_itavg1");
+  auto itavg2       = coupler.get_option<int>("ecpp_itavg2");
+  auto ntavg1       = coupler.get_option<int>("ecpp_ntavg1");
+  auto ntavg2       = coupler.get_option<int>("ecpp_ntavg2");
+  printf("Liran check start ECPP init 2\n");
+  auto gcm_dt       = coupler.get_option<real>("gcm_dt");
+  auto crm_dt       = coupler.get_option<real>("crm_dt");
+  
   int kbase, ktop;
   int m;
   int nup, ndn, icrm;
@@ -72,8 +80,6 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int nupdraft_max = 0;  // Note: This variable is initialized but not used in the given code
   int ndndraft_max = 0;  // Note: This variable is initialized but not used in the given code
 
-  int itavg1 = 0;
-  int itavg2 = 0; // level-1 and level-2 counters
   // variables should inside ecppvars.h
   int DN1 = 0; // !First index of downward classes
   int NCLASS_TR = 0; // !Num. of transport classes
@@ -82,7 +88,9 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int NCLASS_CL = ncc_in; // Number of cloud classes
   int NCLASS_PR = nprcp_in; // Number of precipitaion classes
 
-   printf("Liran check start ECPP init\n");
+  double ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
+  double ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
+   
  
 // Sanity check... <not included NEED TO ADD LATER!!!!>
 // Line 182 to line 210
@@ -128,14 +136,19 @@ printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
 printf("\nValue of nens: %d: ", nens);
 
 dm_device.register_and_allocate<real>("updraftbase", "<description>", {nens}, {"nens"});
-dm_device.register_and_allocate<real>("updrafttop", "<description>", {nens}, {"nens"});
-dm_device.register_and_allocate<real>("dndrafttop", "<description>", {nens}, {"nens"});
+dm_device.register_and_allocate<real>("updrafttop", "<description>",  {nens}, {"nens"});
+dm_device.register_and_allocate<real>("dndrafttop", "<description>",  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndraftbase", "<description>", {nens}, {"nens"});
 
 auto updraftbase  = dm_device.get<real,1>("updraftbase");
 auto updrafttop   = dm_device.get<real,1>("updrafttop");
 auto dndrafttop   = dm_device.get<real,1>("dndrafttop");
 auto dndraftbase  = dm_device.get<real,1>("dndraftbase");
+
+itavg1 = 0;
+itavg2 = 0;
+printf("%s %.2f\n", "\nLiran check ecpp_itavg1 init:", itavg1);
+printf("%s %.2f\n", "\nLiran check ecpp_itavg2 init:", itavg2);
  printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
     updraftbase(icrm) = 0;
@@ -162,15 +175,17 @@ dm_device.register_and_allocate<real>("precallsum1", "<description>", {nz,ny,nx,
 dm_device.register_and_allocate<real>("altsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("rhsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("cf3dsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
-//dm_device.register_and_allocate<real>("wwsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
-//dm_device.register_and_allocate<real>("wwsqsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});  //nzstag
+dm_device.register_and_allocate<real>("ecppwwsum1", "<description>", {nzstag,ny,nx,nens}, {"nzstag","y","x","nens"});  //nzstag
+dm_device.register_and_allocate<real>("ecppwwsqsum1", "<description>", {nzstag,ny,nx,nens}, {"nzstag","y","x","nens"});  //nzstag
 dm_device.register_and_allocate<real>("tkesgssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("prainsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("qvssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("liran_test4d", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 // 2D vectors
 dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nz,nens}, {"z","nens"});\
+dm_device.register_and_allocate<real>("liran_test2d", "<description>", {nz,nens}, {"z","nens"});
 //dm_device.register_and_allocate<real>("wwqui_bnd_sum", "<description>", {nz,nens}, {"z","nens"}); //nz+1
 dm_device.register_and_allocate<real>("wwqui_cloudy_cen_sum", "<description>", {nz,nens}, {"z","nens"});
 //dm_device.register_and_allocate<real>("wwqui_cloudy_bnd_sum", "<description>", {nz,nens}, {"z","nens"});//nz+1
@@ -194,15 +209,17 @@ auto precallsum1         = dm_device.get<real,4>("precallsum1");
 auto altsum1             = dm_device.get<real,4>("altsum1");
 auto rhsum1              = dm_device.get<real,4>("rhsum1");
 auto cf3dsum1            = dm_device.get<real,4>("cf3dsum1");
-//auto wwsum1              = dm_device.get<real,4>("wwsum1");
-//auto wwsqsum1            = dm_device.get<real,4>("wwsqsum1");
+auto ecppwwsum1          = dm_device.get<real,4>("ecppwwsum1");
+auto ecppwwsqsum1        = dm_device.get<real,4>("ecppwwsqsum1");
 auto tkesgssum1          = dm_device.get<real,4>("tkesgssum1");
 auto qlsink_bfsum1       = dm_device.get<real,4>("qlsink_bfsum1");
 auto prainsum1           = dm_device.get<real,4>("prainsum1");
 auto qvssum1             = dm_device.get<real,4>("qvssum1");
+auto liran_test4d        = dm_device.get<real,4>("liran_test4d");
 
 auto xkhvsum              = dm_device.get<real,2>("xkhvsum");
 auto wwqui_cen_sum        = dm_device.get<real,2>("wwqui_cen_sum");
+auto liran_test2d         = dm_device.get<real,2>("liran_test2d");
 //auto wwqui_bnd_sum        = dm_device.get<real,2>("wwqui_bnd_sum");            // Note: Adjust dimensionality if needed
 auto wwqui_cloudy_cen_sum = dm_device.get<real,2>("wwqui_cloudy_cen_sum");
 //auto wwqui_cloudy_bnd_sum = dm_device.get<real,2>("wwqui_cloudy_bnd_sum");     // Note: Adjust dimensionality if needed
@@ -228,18 +245,20 @@ parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix
   altsum1(iz,iy,ix,iens)            = 0;
   rhsum1(iz,iy,ix,iens)             = 0;
   cf3dsum1(iz,iy,ix,iens)           = 0;
-  //wwsum1(iz,iy,ix,iens)             = 0;
-  //wwsqsum1(iz,iy,ix,iens)           = 0;
+  ecppwwsum1(iz,iy,ix,iens)         = 0;
+  ecppwwsqsum1(iz,iy,ix,iens)       = 0;
   tkesgssum1(iz,iy,ix,iens)         = 0;
   qlsink_bfsum1(iz,iy,ix,iens)      = 0;
   prainsum1(iz,iy,ix,iens)          = 0;
   qvssum1(iz,iy,ix,iens)            = 0;
+  liran_test4d(iz,iy,ix,iens)       = 1;
 });
 printf("Liran check start ECPP init 1 here\n");
 // Initialization of 2D variables
 parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   xkhvsum(iz,iens)                 = 0;
   wwqui_cen_sum(iz,iens)           = 0;
+  liran_test2d(iz,iens)            = 1;
   //wwqui_bnd_sum(iz,iens)           = 0;  // Note: This might need adjustment for nz+1 dimension
   wwqui_cloudy_cen_sum(iz,iens)    = 0;
   //wwqui_cloudy_bnd_sum(iz,iens)    = 0;  // Note: This might need adjustment for nz+1 dimension
@@ -247,7 +266,15 @@ parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nz+1 dimension
 });
 
-  printf("Liran check start ECPP init end here\n");
+
+
+// Ensure ntavg2_ss is a multiple of ntavg1_ss
+ecpp_ntavg1_ss = ecpp_ntavg2_ss / (int)(ecpp_ntavg2_ss / ecpp_ntavg1_ss);
+ntavg1 = ecpp_ntavg1_ss / crm_dt;
+ntavg2 = ecpp_ntavg2_ss / crm_dt;
+
+
+printf("Liran check start ECPP init end here\n");
 
 }
 
@@ -260,11 +287,16 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
   auto &dm_device = coupler.get_data_manager_device_readwrite();
   auto &dm_host   = coupler.get_data_manager_host_readwrite();
   auto nens       = coupler.get_option<int>("ncrms");
-  auto nz        = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
+  auto nz         = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
-printf("Liran check start ecpp_crm_stat 00\n");
+  auto gcm_dt     = coupler.get_option<double>("gcm_dt");
+  auto crm_dt     = coupler.get_option<double>("crm_dt");
+  
+  printf("Liran check start ecpp_crm_stat 00\n");
+  int ncnt1, ncnt2;
+  double gem_dt_double = gcm_dt;
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
   auto qcloudsum1 = dm_device.get<real, 4>("qcloudsum1");
@@ -280,20 +312,38 @@ printf("Liran check start ecpp_crm_stat 00\n");
   auto altsum1 = dm_device.get<real, 4>("altsum1");
   auto rhsum1 = dm_device.get<real, 4>("rhsum1");
   auto cf3dsum1 = dm_device.get<real, 4>("cf3dsum1");
-  //auto wwsum1 = dm_device.get<real, 4>("wwsum1");
-  //auto wwsqsum1 = dm_device.get<real, 4>("wwsqsum1");
+  auto ecppwwsum1 = dm_device.get<real, 4>("ecppwwsum1");
+  auto ecppwwsqsum1 = dm_device.get<real, 4>("ecppwwsqsum1");
   auto tkesgssum1 = dm_device.get<real, 4>("tkesgssum1");
   auto qlsink_bfsum1 = dm_device.get<real, 4>("qlsink_bfsum1");
   auto prainsum1 = dm_device.get<real, 4>("prainsum1");
   auto qvssum1 = dm_device.get<real, 4>("qvssum1");
+  auto liran_test4d = dm_device.get<real, 4>("liran_test4d");
+  auto itavg1  = coupler.get_option<int>("ecpp_itavg1");
+  auto itavg2  = coupler.get_option<int>("ecpp_itavg2");
+  auto ntavg1  = coupler.get_option<int>("ecpp_ntavg1");
+  auto ntavg2  = coupler.get_option<int>("ecpp_ntavg2");
   //------------------------------------------------------------------------------------------------
   printf("Liran check start ecpp_crm_stat 01\n");
-
+  // Set level-1 and level-2 averaging periods for ECPP
+  
+  // Calculate number of steps assuming dt evenly divides ntavg[12]_ss
+  
+  printf("%s %.2f\n", "Liran check gcm_dt:", gcm_dt);
+  printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
+  printf("%s %.2f\n", "Liran check ntavg1:", ntavg1);
+  printf("%s %.2f\n", "Liran check ntavg2:", ntavg2);
+  printf("%s %.2f\n", "Liran check ecpp_itavg1 1:", itavg1);
+  printf("%s %.2f\n", "Liran check ecpp_itavg2 1:", itavg2);
 /* 
 !------------------------------------------------------------------------
 ! Main code section...
 !------------------------------------------------------------------------
 */
+  itavg1 = itavg1 + 1;
+  itavg2 = itavg2 + 1;
+  printf("%s %.2f\n", "Liran check ecpp_itavg1 2:", itavg1);
+  printf("%s %.2f\n", "Liran check ecpp_itavg2 2:", itavg2);
   double T_test = 283.14;
   double esat_test = 0;
   double polysvp(double T, int TYPE);
@@ -313,6 +363,7 @@ printf("Liran check start ecpp_crm_stat 00\n");
   auto qcloud                   = dm_device.get<real,4>("cloud_water");
   auto qrloud                   = dm_device.get<real,4>("rain");
   auto qiloud                   = dm_device.get<real,4>("ice");
+
 // Increment the 3-D running sums for averaging period 1.
 // Increments 3-D running sums for the variables averaged every
 // ntavg1_mm minutes.  
@@ -323,29 +374,51 @@ printf("%s %.2f\n", "Liran check evp:", esat_test);
 parallel_for( "update sums",
               SimpleBounds<4>(nz, ny, nx, nens),
               YAKL_LAMBDA (int k, int j, int i, int icrm) {
-
-    qcloudsum1(k,j,i,icrm) += qcloud(k,j,i,icrm);
-    //qcloud_bfsum1[i][j][k][icrm] += qcloud_bf[i][j][k][icrm];
-    //qrainsum1[i][j][k][icrm] += qrain[i][j][k][icrm];
-    //qicesum1[i][j][k][icrm] += qice[i][j][k][icrm];
-    //qsnowsum1[i][j][k][icrm] += qsnow[i][j][k][icrm];
-    //qgraupsum1[i][j][k][icrm] += qgraup[i][j][k][icrm];
-    //qlsinksum1[i][j][k][icrm] += qlsink[i][j][k][icrm] * qcloud[i][j][k][icrm];
-    //precrsum1[i][j][k][icrm] += precr[i][j][k][icrm];
-    //precsolidsum1[i][j][k][icrm] += precsolid[i][j][k][icrm];
-    //precallsum1[i][j][k][icrm] += precall[i][j][k][icrm];
-    //altsum1[i][j][k][icrm] += alt[i][j][k][icrm];
-    //rhsum1[i][j][k][icrm] += rh[i][j][k][icrm];
-    //cf3dsum1[i][j][k][icrm] += cf3d[icrm][i][j][k];
-    //wwsum1[i][j][k][icrm] += ww[i][j][k][icrm];
-    //wwsqsum1[i][j][k][icrm] += wwsq[i][j][k][icrm];
-    //tkesgssum1[i][j][k][icrm] += tkesgs[i][j][k][icrm];
-    //qlsink_bfsum1[i][j][k][icrm] += qlsink_bf[i][j][k][icrm] * qcloud_bf[i][j][k][icrm];
-    //prainsum1[i][j][k][icrm] += prain[i][j][k][icrm];
-    //qvssum1[i][j][k][icrm] += qvs[icrm][i][j][k];
+    yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
+    yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
+    yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
+    yakl::atomicAdd(liran_test4d(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
+    yakl::atomicAdd(ecppwwsum1(k,j,i,icrm) , ecppwwsum1(k,j,i,icrm));
+    yakl::atomicAdd(ecppwwsqsum1(k,j,i,icrm) , ecppwwsqsum1(k,j,i,icrm));
+    yakl::atomicAdd(rhsum1(k,j,i,icrm) , rhsum1(k,j,i,icrm));
+    yakl::atomicAdd(cf3dsum1(k,j,i,icrm) , cf3dsum1(k,j,i,icrm));
+    yakl::atomicAdd(tkesgssum1(k,j,i,icrm) , tkesgssum1(k,j,i,icrm));
+    yakl::atomicAdd(qvssum1(k,j,i,icrm) , qvssum1(k,j,i,icrm));
+    yakl::atomicAdd(prainsum1(k,j,i,icrm) , prainsum1(k,j,i,icrm));
+    yakl::atomicAdd(precallsum1(k,j,i,icrm) , precallsum1(k,j,i,icrm));
 
 });
 
+/*
+      qcloud_bfsum1(:,:,:,icrm) = qcloud_bfsum1(:,:,:,icrm) + qcloud_bf(:,:,:,icrm)
+      qsnowsum1    (:,:,:,icrm) = qsnowsum1    (:,:,:,icrm) + qsnow(:,:,:,icrm)
+      qgraupsum1   (:,:,:,icrm) = qgraupsum1   (:,:,:,icrm) + qgraup(:,:,:,icrm)
+      qlsinksum1   (:,:,:,icrm) = qlsinksum1   (:,:,:,icrm) + qlsink(:,:,:,icrm)*qcloud(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
+      precrsum1    (:,:,:,icrm) = precrsum1    (:,:,:,icrm) + precr(:,:,:,icrm)
+      precsolidsum1(:,:,:,icrm) = precsolidsum1(:,:,:,icrm) + precsolid(:,:,:,icrm)
+      altsum1      (:,:,:,icrm) = altsum1      (:,:,:,icrm) + alt(:,:,:,icrm
+      qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
+
+*/
+
+// Check if we have reached the end of the level 1 time averaging period.
+if (itavg1 % ntavg1 == 0) {
+
+    // Turn the running sums into averages.
+    ncnt1 = (itavg1 != 0) ? ntavg1 : 1;
+    printf("%s %.2f\n", "Liran check ncnt1:", ncnt1);
+
+    parallel_for( "Turns the columns of running sums into averages",
+                  SimpleBounds<4>(nz, ny, nx, nens),
+                  YAKL_LAMBDA (int k, int j, int i, int icrm) {
+        liran_test4d(k,j,i,icrm) =liran_test4d(k,j,i,icrm)/ncnt1;
+
+    });
+
+}
+
+
+printf("%s %.2f\n", "Liran check 4D sum:", liran_test4d(10,10,10,10));
 printf("Liran check start ECPP ecpp_crm_stat 02\n");
 // Increment the running sums for the level two variables that are not
 // already incremented. Consolidate from 3-D to 1-D columns.

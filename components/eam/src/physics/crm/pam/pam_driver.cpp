@@ -23,7 +23,6 @@
 // Needed for p3_init
 #include "p3_functions.hpp"
 #include "p3_f90.hpp"
-
 #include "pam_debug.h"
 bool constexpr enable_check_state = false;
 
@@ -37,6 +36,7 @@ extern "C" void pam_driver() {
   auto &coupler = pam_interface::get_coupler();
   //------------------------------------------------------------------------------------------------
   // retreive coupler options
+  printf("Liran check pam_driver 00.\n");
   auto nens          = coupler.get_option<int>("ncrms");
   auto gcm_nlev      = coupler.get_option<int>("gcm_nlev");
   auto crm_nz        = coupler.get_option<int>("crm_nz");

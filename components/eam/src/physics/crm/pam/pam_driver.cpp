@@ -42,11 +42,8 @@ extern "C" void pam_driver() {
   auto crm_nz        = coupler.get_option<int>("crm_nz");
   auto crm_nx        = coupler.get_option<int>("crm_nx");
   auto crm_ny        = coupler.get_option<int>("crm_ny");
-  printf("Liran check pam_driver 01.\n");
   auto gcm_dt        = coupler.get_option<real>("gcm_dt");
-  printf("Liran check pam_driver 02.\n");
   auto crm_dt        = coupler.get_option<real>("crm_dt");
-  printf("Liran check pam_driver 03.\n");
   auto is_first_step = coupler.get_option<bool>("is_first_step");
   auto is_restart    = coupler.get_option<bool>("is_restart");
   bool use_crm_accel = coupler.get_option<bool>("use_crm_accel");
@@ -218,7 +215,7 @@ extern "C" void pam_driver() {
     printf("Liran check ecpp_crm_stat 0.\n");
     #if defined(ECPP)
       printf("Liran check ecpp_crm_stat 1.\n");
-      ecpp_crm_stat(coupler);
+      ecpp_crm_stat(coupler,nstep);
     #endif
     printf("Liran check ecpp_crm_stat 2.\n");
 

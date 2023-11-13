@@ -88,14 +88,10 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
   int NCLASS_CL = ncc_in; // Number of cloud classes
   int NCLASS_PR = nprcp_in; // Number of precipitaion classes
-
-  real ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
-  real ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
    
  
 // Sanity check... <not included NEED TO ADD LATER!!!!>
 // Line 182 to line 210
-
 
 /* Determine number of updrafts and downdrafts
 
@@ -148,6 +144,8 @@ auto dndraftbase  = dm_device.get<real,1>("dndraftbase");
 
 itavg1 = 0;
 itavg2 = 0;
+ntavg1 = 0;
+ntavg2 = 0;
 printf("%s %.2f\n", "\nLiran check ecpp_itavg1 init:", itavg1);
 printf("%s %.2f\n", "\nLiran check ecpp_itavg2 init:", itavg2);
 printf("\nLiran check start updraftbase calculation\n");
@@ -267,18 +265,6 @@ parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nz+1 dimension
 });
 
-
-
-// Ensure ntavg2_ss is a multiple of ntavg1_ss
-ecpp_ntavg1_ss = (int)(ecpp_ntavg2_ss / (ecpp_ntavg2_ss / ecpp_ntavg1_ss));
-ntavg1 = (int)(ecpp_ntavg1_ss / crm_dt);
-ntavg2 = (int)(ecpp_ntavg2_ss / crm_dt);
-printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss 00:", ecpp_ntavg1_ss);
-printf("%s %.2f\n", "Liran check crm_dt 00:", crm_dt);
-printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss / crm_dt)", (ecpp_ntavg1_ss / crm_dt));
-printf("%s %.2f\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", (int)(ecpp_ntavg1_ss / crm_dt));
-printf("%s %.2f\n", "Liran check ntavg1 00:", ntavg1);
-printf("%s %.2f\n", "Liran check ntavg2 00:", ntavg2);
 printf("Liran check start ECPP init end here\n");
 
 }
@@ -286,7 +272,7 @@ printf("Liran check start ECPP init end here\n");
 
 // =========================================================================|ecpp_crm_stat|=========
 // allocate and initialize variables
-inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
+inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   using yakl::c::parallel_for;
   using yakl::c::SimpleBounds;
   auto &dm_device = coupler.get_data_manager_device_readwrite();
@@ -302,10 +288,10 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
   auto ntavg2     = coupler.get_option<int>("ecpp_ntavg2");
   auto gcm_dt     = coupler.get_option<real>("gcm_dt");
   auto crm_dt     = coupler.get_option<real>("crm_dt");
-  
-  printf("Liran check start ecpp_crm_stat 00\n");
-  int ncnt1, ncnt2;
-  //int ntavg1, ntavg2;
+  printf("%s %.2f\n", "Liran check ntavg1 00:", ntavg1);
+  printf("%s %.2f\n", "Liran check ntavg2 00:", ntavg2);
+  printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
+  printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
   auto qcloudsum1 = dm_device.get<real, 4>("qcloudsum1");
@@ -329,31 +315,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
   auto qvssum1 = dm_device.get<real, 4>("qvssum1");
   auto liran_test4d = dm_device.get<real, 4>("liran_test4d");
 
-  //------------------------------------------------------------------------------------------------
-  printf("Liran check start ecpp_crm_stat 01\n");
-  // Set level-1 and level-2 averaging periods for ECPP
-  
-  // Calculate number of steps assuming dt evenly divides ntavg[12]_ss
-  
-  printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
-  printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
-  printf("%s %.2f\n", "Liran check ntavg1:", ntavg1);
-  printf("%s %.2f\n", "Liran check ntavg2:", ntavg2);
-  printf("%s %d\n", "Liran check ecpp_itavg1 1:", itavg1);
-  printf("%s %d\n", "Liran check ecpp_itavg2 1:", itavg2);
-/* 
-!------------------------------------------------------------------------
-! Main code section...
-!------------------------------------------------------------------------
-*/
-  itavg1 = itavg1 + 1;
-  itavg2 = itavg2 + 1;
-  printf("%s %d\n", "Liran check ecpp_itavg1 2:", itavg1);
-  printf("%s %d\n", "Liran check ecpp_itavg2 2:", itavg2);
-  double T_test = 283.14;
-  double esat_test = 0;
-  double polysvp(double T, int TYPE);
-// Get values from PAM cloud fields
+  // Get values from PAM cloud fields
   auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk");
   auto host_state_shoc_tkh      = dm_host.get<real,4>("state_shoc_tkh");
   auto host_state_qv            = dm_host.get<real,4>("state_qv");
@@ -369,6 +331,40 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler ) {
   auto qcloud                   = dm_device.get<real,4>("cloud_water");
   auto qrloud                   = dm_device.get<real,4>("rain");
   auto qiloud                   = dm_device.get<real,4>("ice");
+  printf("%s %.2f\n", "Liran check ntavg1 21:", ntavg1);
+  printf("%s %.2f\n", "Liran check ntavg2 21:", ntavg2);
+  //------------------------------------------------------------------------------------------------
+  // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
+  real ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
+  real ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
+  printf("Liran check start ecpp_crm_stat 00\n");
+  // Ensure ntavg2_ss is a multiple of ntavg1_ss
+  ecpp_ntavg1_ss = (int)(ecpp_ntavg2_ss / (ecpp_ntavg2_ss / ecpp_ntavg1_ss));
+  ntavg1 = (int)(ecpp_ntavg1_ss / crm_dt);
+  ntavg2 = (int)(ecpp_ntavg2_ss / crm_dt);
+  printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss 00:", ecpp_ntavg1_ss);
+  printf("%s %.2f\n", "Liran check crm_dt 00:", crm_dt);
+  printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss / crm_dt)", (ecpp_ntavg1_ss / crm_dt));
+  printf("%s %.2f\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", (int)(ecpp_ntavg1_ss / crm_dt));
+  printf("%s %d %d\n", "Liran check ecpp_itavg1 1:", itavg1, ntavg1);
+  printf("%s %d %d\n", "Liran check ecpp_itavg2 1:", itavg2, ntavg2);
+
+  // Set level-1 and level-2 averaging periods for ECPP
+  
+  // Calculate number of steps assuming dt evenly divides ntavg[12]_ss
+/* 
+!------------------------------------------------------------------------
+! Main code section...
+!------------------------------------------------------------------------
+*/
+  itavg1 = nstep;
+  itavg2 = nstep;
+  printf("%s %d %d\n", "Liran check ecpp_itavg1 2:", itavg1, ntavg1);
+  printf("%s %d %d\n", "Liran check ecpp_itavg2 2:", itavg2, ntavg2);
+  double T_test = 283.14;
+  double esat_test = 0;
+  double polysvp(double T, int TYPE);
+
 
 // Increment the 3-D running sums for averaging period 1.
 // Increments 3-D running sums for the variables averaged every
@@ -406,6 +402,7 @@ parallel_for( "update sums",
       qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
 
 */
+printf("%s %.2f\n", "Liran check liran_test4d:", liran_test4d(10,10,10,10));
 printf("%s %d\n", "Liran check itavg1:", itavg1);
 printf("%s %d\n", "Liran check ntavg1:", ntavg1);
 if (ntavg1 != 0 && itavg1 % ntavg1 == 0) {

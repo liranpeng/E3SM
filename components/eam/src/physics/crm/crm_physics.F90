@@ -574,7 +574,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
    integer lchnk                                   ! chunk identifier
    integer ncol                                    ! number of atmospheric columns
    integer nstep                                   ! time steps
-
+   integer nzero
    type(physics_buffer_desc), pointer :: pbuf_chunk(:) ! temporary pbuf pointer for single chunk
 
    ! convective precipitation variables on pbuf
@@ -1434,7 +1434,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_mirror_array_readwrite( 'output_dqr_sponge', crm_output%dqr_sponge,   '' )
 
       call pam_mirror_array_readonly( 'global_column_id', gcolp )
-
+      nzero = 0
       call pam_set_option('ncrms', ncrms )
       call pam_set_option('gcm_nlev', pver )
       call pam_set_option('crm_nz',crm_nz )
@@ -1446,10 +1446,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('crm_dy',crm_dy )
       call pam_set_option('gcm_dt',ztodt )
       call pam_set_option('crm_dt',crm_dt )
-      call pam_set_option('ecpp_itavg1',0 )
-      call pam_set_option('ecpp_itavg2',0 )
-      call pam_set_option('ecpp_ntavg1',0 )
-      call pam_set_option('ecpp_ntavg2',0 )
+      call pam_set_option('ecpp_itavg1',nzero )
+      call pam_set_option('ecpp_itavg2',nzero )
+      call pam_set_option('ecpp_ntavg1',nzero)
+      call pam_set_option('ecpp_ntavg2',nzero )
 
       call pam_register_dimension('gcm_lev',pver)
 

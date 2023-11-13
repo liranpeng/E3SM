@@ -42,15 +42,20 @@ extern "C" void pam_driver() {
   auto crm_nz        = coupler.get_option<int>("crm_nz");
   auto crm_nx        = coupler.get_option<int>("crm_nx");
   auto crm_ny        = coupler.get_option<int>("crm_ny");
+  printf("Liran check pam_driver 01.\n");
   auto gcm_dt        = coupler.get_option<real>("gcm_dt");
+  printf("Liran check pam_driver 02.\n");
   auto crm_dt        = coupler.get_option<real>("crm_dt");
+  printf("Liran check pam_driver 03.\n");
   auto is_first_step = coupler.get_option<bool>("is_first_step");
   auto is_restart    = coupler.get_option<bool>("is_restart");
   bool use_crm_accel = coupler.get_option<bool>("use_crm_accel");
   bool enable_physics_tend_stats = coupler.get_option<bool>("enable_physics_tend_stats");
   //------------------------------------------------------------------------------------------------
   // set various coupler options
+  printf("Liran check pam_driver 04.\n");
   coupler.set_option<real>("gcm_physics_dt",gcm_dt);
+  printf("Liran check pam_driver 05.\n");
   #ifdef MMF_PAM_DPP
   // this is leftover from debugging, but it might still be useful for testing values of crm_per_phys
   coupler.set_option<int>("crm_per_phys",MMF_PAM_DPP);
@@ -66,6 +71,7 @@ extern "C" void pam_driver() {
 
   // set up the grid - this needs to happen before initializing coupler objects
   pam_state_set_grid(coupler);
+  printf("Liran check pam_driver 06.\n");
   //------------------------------------------------------------------------------------------------
   // get seperate data manager objects for host and device
   auto &dm_device = coupler.get_data_manager_device_readwrite();
@@ -84,10 +90,10 @@ extern "C" void pam_driver() {
   //------------------------------------------------------------------------------------------------
   // update coupler GCM state with input GCM state
   pam_state_update_gcm_state(coupler);
-
+  printf("Liran check pam_driver 07.\n");
   // Copy input CRM state (saved by the GCM) to coupler
   pam_state_copy_input_to_coupler(coupler);
-
+  printf("Liran check pam_driver 08.\n");
   // // update CRM dry density to match GCM and disable dry density forcing
   // pam_state_update_dry_density(coupler);
 
@@ -96,7 +102,7 @@ extern "C" void pam_driver() {
     pam_debug_init(coupler);
     pam_debug_check_state(coupler, 0, 0);
   }
-
+  printf("Liran check pam_driver 09.\n");
   // Compute CRM forcing tendencies
   modules::compute_gcm_forcing_tendencies(coupler);
 
@@ -108,30 +114,32 @@ extern "C" void pam_driver() {
 
   // initialize aggregated variables for output statistics
   pam_statistics_init(coupler);
-
+  printf("Liran check pam_driver 10.\n");
   // initialize variables for CRM mean-state acceleration
   if (use_crm_accel) { pam_accelerate_init(coupler); }
-
+  printf("Liran check pam_driver 11.\n");
   // initilize surface "psuedo-friction" (psuedo => doesn't match "real" GCM friction)
   auto input_tau  = dm_host.get<real const,1>("input_tau00").createDeviceCopy();
   auto input_bflx = dm_host.get<real const,1>("input_bflxls").createDeviceCopy();
   modules::surface_friction_init(coupler, input_tau, input_bflx);
-
+  printf("Liran check pam_driver 11_0.\n");
   // Perturb the CRM at the only on first CRM call
   if (is_first_step) {
     auto global_column_id = dm_host.get<int const,1>("global_column_id").createDeviceCopy();
     modules::perturb_temperature( coupler , global_column_id );
   }
-
+  printf("Liran check pam_driver 11_1.\n");
   // Microphysics initialization - load lookup tables
   #if defined(P3_CXX)
     if (is_first_step || is_restart) {
       auto am_i_root = coupler.get_option<bool>("am_i_root");
       scream::p3::p3_init(/*write_tables=*/false, am_i_root);
+      printf("Liran check pam_driver 11_2.\n");
       pam::p3_init_lookup_tables(); // Load P3 lookup table data - avoid re-loading every CRM call
+      printf("Liran check pam_driver 11_3.\n");
     }
   #endif
-
+  printf("Liran check pam_driver 12.\n");
   // dycor initialization
   bool do_density_save_recall = false;
   #if defined(MMF_PAM_DYCOR_SPAM)

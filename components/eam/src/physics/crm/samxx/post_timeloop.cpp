@@ -63,6 +63,7 @@ void post_timeloop() {
   YAKL_SCOPE( crm_output_qci          , :: crm_output_qci );
   YAKL_SCOPE( crm_output_qpl          , :: crm_output_qpl );
   YAKL_SCOPE( crm_output_qpi          , :: crm_output_qpi );
+  YAKL_SCOPE( crm_output_bou          , :: crm_output_bou );
   YAKL_SCOPE( crm_output_tk           , :: crm_output_tk );
   YAKL_SCOPE( crm_output_tkh          , :: crm_output_tkh );
   YAKL_SCOPE( crm_output_z0m          , :: crm_output_z0m );
@@ -132,6 +133,9 @@ void post_timeloop() {
   YAKL_SCOPE( crm_output_tkesgsz      , :: crm_output_tkesgsz );
   YAKL_SCOPE( crm_output_tkez         , :: crm_output_tkez );
   YAKL_SCOPE( crm_output_tkew         , :: crm_output_tkew );
+  YAKL_SCOPE( crm_output_tkeb         , :: crm_output_tkeb );
+  YAKL_SCOPE( crm_output_tkeqc        , :: crm_output_tkeqc);
+  YAKL_SCOPE( crm_output_tkeqt        , :: crm_output_tkeqt);
   YAKL_SCOPE( crm_output_tkz          , :: crm_output_tkz );
   YAKL_SCOPE( crm_output_precflux     , :: crm_output_precflux );
   YAKL_SCOPE( crm_output_qp_fall      , :: crm_output_qp_fall );
@@ -163,6 +167,7 @@ void post_timeloop() {
   YAKL_SCOPE( crm_output_t_vt_ls      , :: crm_output_t_vt_ls );
   YAKL_SCOPE( crm_output_q_vt_ls      , :: crm_output_q_vt_ls );
   YAKL_SCOPE( crm_output_u_vt_ls      , :: crm_output_u_vt_ls );
+  YAKL_SCOPE( crm_output_bou_ls       , :: crm_output_bou_ls );
   YAKL_SCOPE( t_vt_tend               , :: t_vt_tend );
   YAKL_SCOPE( q_vt_tend               , :: q_vt_tend );
   YAKL_SCOPE( u_vt_tend               , :: u_vt_tend );
@@ -217,7 +222,8 @@ void post_timeloop() {
     uln  (k,icrm) = 0.0;
     vln  (k,icrm) = 0.0;
   });
-  
+ 
+
   // for (int icrm=0; icrm<ncrms; icrm++) {
   parallel_for( ncrms , YAKL_LAMBDA (int icrm) {
     colprec (icrm)=0;
@@ -368,6 +374,12 @@ void post_timeloop() {
     crm_output_qci(k,j,i,icrm) = qci(k,j,i,icrm);
     crm_output_qpl(k,j,i,icrm) = qpl(k,j,i,icrm);
     crm_output_qpi(k,j,i,icrm) = qpi(k,j,i,icrm);
+    crm_output_bou(k,j,i,icrm) = tabs(k,j,i,icrm)*(1+0.61*qv(k,j,i,icrm)-(qcl(k,j,i,icrm)+qci(k,j,i,icrm)+qpl(k,j,i,icrm)+qpi(k,j,i,icrm)));
+  });
+
+  parallel_for( SimpleBounds<4>(nzm,ny,nx,ncrms) , YAKL_LAMBDA (int k, int j, int i, int icrm) { 
+    int l = plev-(k+1);
+    yakl::atomicAdd(crm_output_bou_ls(k,icrm) , crm_output_bou(k,j,i,icrm));
   });
 
   // for (int icrm=0; icrm<ncrms; icrm++) {
@@ -496,9 +508,14 @@ void post_timeloop() {
   // for (int k=0; k<nzm; k++) {
   //  for (int icrm=0; icrm<ncrms; icrm++) {
   parallel_for( SimpleBounds<2>(nzm,ncrms) , YAKL_LAMBDA (int k, int icrm) {
+    int l = plev-(k+1);
+    int lp1   = plev-(k+1+1);
     real u2z = 0.0;
     real v2z = 0.0;
     real w2z = 0.0;
+    real wqcz = 0.0;
+    real wqtz = 0.0;
+    real wb   = 0.0;
     for (int j=0; j<ny; j++) {
       for (int i=0; i<nx; i++) {
         real tmp1 = (u(k,j+offy_u,i+offx_u,icrm)-u0(k,icrm));
@@ -527,7 +544,7 @@ void post_timeloop() {
     qpfall(k,icrm) = qpfall(k,icrm) * factor_xy*icrm_run_time;   // kg/kg in M2005 ---> kg/kg/s
     precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/((real) nstop);  //kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/((real) nstop))
 
-    int l = plev-(k+1);
+    l = plev-(k+1);
     crm_output_flux_u    (l,icrm) = (uwle(k,icrm) + uwsb(k,icrm))*tmp1*factor_xy/((real) nstop);
     crm_output_flux_v    (l,icrm) = (vwle(k,icrm) + vwsb(k,icrm))*tmp1*factor_xy/((real) nstop);
     crm_output_flux_qt   (l,icrm) = mkwle(0,k,icrm) + mkwsb(0,k,icrm);
@@ -544,6 +561,9 @@ void post_timeloop() {
     crm_output_tkesgsz   (l,icrm)= rho(k,icrm)*tmp*factor_xy;
     crm_output_tkez      (l,icrm)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output_tkesgsz(l,icrm);
     crm_output_tkew      (l,icrm)= rho(k,icrm)*0.5*w2z*factor_xy;
+    crm_output_tkeqc     (l,icrm)= (crm_output_tkeqc(l,icrm)/((real) nstop))*factor_xy;
+    crm_output_tkeqt     (l,icrm)= (crm_output_tkeqt(l,icrm)/((real) nstop))*factor_xy;
+    crm_output_tkeb      (l,icrm)= (crm_output_tkeb(l,icrm)/((real) nstop))*factor_xy;
 
     tmp = 0.0;
     for (int j=0; j<ny; j++) {

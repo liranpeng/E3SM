@@ -223,10 +223,6 @@ void post_timeloop() {
     vln  (k,icrm) = 0.0;
   });
  
-  parallel_for( SimpleBounds<4>(nzm,ny,nx,ncrms) , YAKL_LAMBDA (int k, int j, int i, int icrm) { 
-    int l = plev-(k+1);
-    yakl::atomicAdd(crm_output_bou_ls(k,icrm) , crm_output_bou(k,j,i,icrm));
-  });
 
   // for (int icrm=0; icrm<ncrms; icrm++) {
   parallel_for( ncrms , YAKL_LAMBDA (int icrm) {
@@ -379,6 +375,11 @@ void post_timeloop() {
     crm_output_qpl(k,j,i,icrm) = qpl(k,j,i,icrm);
     crm_output_qpi(k,j,i,icrm) = qpi(k,j,i,icrm);
     crm_output_bou(k,j,i,icrm) = tabs(k,j,i,icrm)*(1+0.61*qv(k,j,i,icrm)-(qcl(k,j,i,icrm)+qci(k,j,i,icrm)+qpl(k,j,i,icrm)+qpi(k,j,i,icrm)));
+  });
+
+  parallel_for( SimpleBounds<4>(nzm,ny,nx,ncrms) , YAKL_LAMBDA (int k, int j, int i, int icrm) { 
+    int l = plev-(k+1);
+    yakl::atomicAdd(crm_output_bou_ls(k,icrm) , crm_output_bou(k,j,i,icrm));
   });
 
   // for (int icrm=0; icrm<ncrms; icrm++) {
@@ -571,9 +572,9 @@ void post_timeloop() {
     crm_output_tkesgsz   (l,icrm)= rho(k,icrm)*tmp*factor_xy;
     crm_output_tkez      (l,icrm)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output_tkesgsz(l,icrm);
     crm_output_tkew      (l,icrm)= rho(k,icrm)*0.5*w2z*factor_xy;
-    crm_output_tkeqc     (l,icrm)= rho(k,icrm)*0.5*wqcz*factor_xy;
-    crm_output_tkeqt     (l,icrm)= rho(k,icrm)*0.5*wqtz*factor_xy;
-    crm_output_tkeb      (l,icrm)= rho(k,icrm)*0.5*wb*factor_xy;
+    crm_output_tkeqc     (l,icrm)= 0.5*(crm_output_tkeqc(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wqcz)*factor_xy;
+    crm_output_tkeqt     (l,icrm)= 0.5*(crm_output_tkeqt(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wqtz)*factor_xy;
+    crm_output_tkeb      (l,icrm)= 0.5*(crm_output_tkeb(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wb)*factor_xy;
 
     tmp = 0.0;
     for (int j=0; j<ny; j++) {

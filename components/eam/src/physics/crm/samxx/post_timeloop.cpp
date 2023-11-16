@@ -524,7 +524,7 @@ void post_timeloop() {
         real tmp4 = w(k,j+offy_w,i+offx_w,icrm);
         u2z = u2z+tmp1*tmp1;
         v2z = v2z+tmp2*tmp2;
-        w2z = w2z+0.5*(tmp3*tmp3+tmp4*tmp4);]
+        w2z = w2z+0.5*(tmp3*tmp3+tmp4*tmp4);
       }
     }
 

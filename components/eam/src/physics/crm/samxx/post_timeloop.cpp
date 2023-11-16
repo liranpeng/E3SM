@@ -522,20 +522,9 @@ void post_timeloop() {
         real tmp2 = (v(k,j+offy_v,i+offx_v,icrm)-v0(k,icrm));
         real tmp3 = w(k+1,j+offy_w,i+offx_w,icrm);
         real tmp4 = w(k,j+offy_w,i+offx_w,icrm);
-        real tmp5 = qcl(k+1,j+offy_w,i+offx_w,icrm)-crm_output_qc_mean(lp1,icrm)/factor_xy;
-        real tmp6 = qcl(k,j+offy_w,i+offx_w,icrm)-crm_output_qc_mean(l,icrm)/factor_xy;
-        real tmp7 = qci(k+1,j+offy_w,i+offx_w,icrm)-crm_output_qi_mean(lp1,icrm)/factor_xy;
-        real tmp8 = qci(k,j+offy_w,i+offx_w,icrm)-crm_output_qi_mean(l,icrm)/factor_xy;
-        real tmp9 = tmp5+tmp7;
-        real tmp10 = tmp6+tmp8;
-        real tmp11 = crm_output_bou(k+1,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(lp1,icrm);
-        real tmp12 = crm_output_bou(k,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(l,icrm);
         u2z = u2z+tmp1*tmp1;
         v2z = v2z+tmp2*tmp2;
-        w2z = w2z+0.5*(tmp3*tmp3+tmp4*tmp4);
-        wqcz = wqcz+0.5*(tmp3*tmp5+tmp4*tmp6);
-        wqtz = wqtz+0.5*(tmp3*tmp9+tmp4*tmp10);
-        wb   = wb+0.5*(tmp3*tmp11+tmp4*tmp12);
+        w2z = w2z+0.5*(tmp3*tmp3+tmp4*tmp4);]
       }
     }
 
@@ -572,9 +561,9 @@ void post_timeloop() {
     crm_output_tkesgsz   (l,icrm)= rho(k,icrm)*tmp*factor_xy;
     crm_output_tkez      (l,icrm)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output_tkesgsz(l,icrm);
     crm_output_tkew      (l,icrm)= rho(k,icrm)*0.5*w2z*factor_xy;
-    crm_output_tkeqc     (l,icrm)= 0.5*(crm_output_tkeqc(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wqcz)*factor_xy;
-    crm_output_tkeqt     (l,icrm)= 0.5*(crm_output_tkeqt(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wqtz)*factor_xy;
-    crm_output_tkeb      (l,icrm)= 0.5*(crm_output_tkeb(l,icrm)/((real) nstop) + rho(k,icrm)*0.5*wb)*factor_xy;
+    crm_output_tkeqc     (l,icrm)= (crm_output_tkeqc(l,icrm)/((real) nstop))*factor_xy;
+    crm_output_tkeqt     (l,icrm)= (crm_output_tkeqt(l,icrm)/((real) nstop))*factor_xy;
+    crm_output_tkeb      (l,icrm)= (crm_output_tkeb(l,icrm)/((real) nstop))*factor_xy;
 
     tmp = 0.0;
     for (int j=0; j<ny; j++) {

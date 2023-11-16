@@ -222,8 +222,8 @@ void post_timeloop() {
     uln  (k,icrm) = 0.0;
     vln  (k,icrm) = 0.0;
   });
-  
-  parallel_for( SimpleBounds<2>(plev-ptop+1,ncrms) , YAKL_LAMBDA (int k, int icrm) {
+ 
+  parallel_for( SimpleBounds<4>(nzm,ny,nx,ncrms) , YAKL_LAMBDA (int k, int j, int i, int icrm) { 
     int l = plev-(k+1);
     yakl::atomicAdd(crm_output_bou_ls(k,icrm) , crm_output_bou(k,j,i,icrm));
   });
@@ -526,14 +526,14 @@ void post_timeloop() {
         real tmp7 = qci(k+1,j+offy_w,i+offx_w,icrm)-crm_output_qi_mean(lp1,icrm)/factor_xy;
         real tmp8 = qci(k,j+offy_w,i+offx_w,icrm)-crm_output_qi_mean(l,icrm)/factor_xy;
         real tmp9 = tmp5+tmp7;
-        real tmp10= tmp6+tmp8;
-        real tmp11= crm_output_bou(k+1,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(lp1,icrm)
-        real tmp12= crm_output_bou(k,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(l,icrm)
+        real tmp10 = tmp6+tmp8;
+        real tmp11 = crm_output_bou(k+1,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(lp1,icrm);
+        real tmp12 = crm_output_bou(k,j+offy_w,i+offx_w,icrm)-crm_output_bou_ls(l,icrm);
         u2z = u2z+tmp1*tmp1;
         v2z = v2z+tmp2*tmp2;
         w2z = w2z+0.5*(tmp3*tmp3+tmp4*tmp4);
         wqcz = wqcz+0.5*(tmp3*tmp5+tmp4*tmp6);
-        wqtz = wqiz+0.5*(tmp3*tmp9+tmp4*tmp10);
+        wqtz = wqtz+0.5*(tmp3*tmp9+tmp4*tmp10);
         wb   = wb+0.5*(tmp3*tmp11+tmp4*tmp12);
       }
     }
@@ -554,7 +554,7 @@ void post_timeloop() {
     qpfall(k,icrm) = qpfall(k,icrm) * factor_xy*icrm_run_time;   // kg/kg in M2005 ---> kg/kg/s
     precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/((real) nstop);  //kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/((real) nstop))
 
-    int l = plev-(k+1);
+    l = plev-(k+1);
     crm_output_flux_u    (l,icrm) = (uwle(k,icrm) + uwsb(k,icrm))*tmp1*factor_xy/((real) nstop);
     crm_output_flux_v    (l,icrm) = (vwle(k,icrm) + vwsb(k,icrm))*tmp1*factor_xy/((real) nstop);
     crm_output_flux_qt   (l,icrm) = mkwle(0,k,icrm) + mkwsb(0,k,icrm);

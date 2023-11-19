@@ -113,7 +113,7 @@ extern "C" void pam_driver() {
   pam_statistics_init(coupler);
   printf("Liran check pam_driver 10.\n");
   // initialize variables for CRM mean-state acceleration
-  if (use_crm_accel) { pam_accelerate_init(coupler); }
+  //if (use_crm_accel) { pam_accelerate_init(coupler); }
   printf("Liran check pam_driver 11.\n");
   // initilize surface "psuedo-friction" (psuedo => doesn't match "real" GCM friction)
   auto input_tau  = dm_host.get<real const,1>("input_tau00").createDeviceCopy();
@@ -160,13 +160,13 @@ extern "C" void pam_driver() {
 
   // set number of CRM steps
   int nstop = int(gcm_dt/crm_dt);
-
+/*
   // for mean-state acceleration adjust nstop and diagnose horizontal means
   if (use_crm_accel) { 
     pam_accelerate_nstop(coupler,nstop);
     pam_accelerate_diagnose(coupler);
   };
-
+*/
   // Run the CRM
   real etime_crm = 0;
   int nstep = 0;
@@ -218,13 +218,13 @@ extern "C" void pam_driver() {
       ecpp_crm_stat(coupler,nstep);
     #endif
     printf("Liran check ecpp_crm_stat 2.\n");
-
+/*
     // CRM mean state acceleration
     if (use_crm_accel && !coupler.get_option<bool>("crm_acceleration_ceaseflag")) {
       pam_accelerate(coupler, nstep, nstop);
       pam_accelerate_diagnose(coupler);
     }
-
+*/
     // Diagnostic aggregation
     pam_radiation_timestep_aggregation(coupler);
     pam_statistics_timestep_aggregation(coupler);

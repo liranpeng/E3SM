@@ -131,12 +131,12 @@ printf("\nValue of nzstag: %d: ", nzstag);
 printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
 printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
 printf("\nValue of nens: %d: ", nens);
-
+dm_device.register_and_allocate<int>("crm_cnt",     "number of crm timestep count",  {nens},{"nens"});
 dm_device.register_and_allocate<real>("updraftbase", "<description>", {nens}, {"nens"});
 dm_device.register_and_allocate<real>("updrafttop", "<description>",  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndrafttop", "<description>",  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndraftbase", "<description>", {nens}, {"nens"});
-
+auto crm_cnt      = dm_device.get<int,1>("crm_cnt");
 auto updraftbase  = dm_device.get<real,1>("updraftbase");
 auto updrafttop   = dm_device.get<real,1>("updrafttop");
 auto dndrafttop   = dm_device.get<real,1>("dndrafttop");
@@ -150,6 +150,7 @@ printf("%s %.2f\n", "\nLiran check ecpp_itavg1 init:", itavg1);
 printf("%s %.2f\n", "\nLiran check ecpp_itavg2 init:", itavg2);
 printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
+    crm_cnt (icrm) = 0;
     updraftbase(icrm) = 0;
     updrafttop(icrm) = nz - 1;
     dndrafttop(icrm) = nz - 1;
@@ -181,6 +182,7 @@ dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nz,ny,n
 dm_device.register_and_allocate<real>("prainsum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("qvssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("liran_test4d", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+dm_device.register_and_allocate<real>("liran_test4davg", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 // 2D vectors
 dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nz,nens}, {"z","nens"});\
@@ -215,6 +217,7 @@ auto qlsink_bfsum1       = dm_device.get<real,4>("qlsink_bfsum1");
 auto prainsum1           = dm_device.get<real,4>("prainsum1");
 auto qvssum1             = dm_device.get<real,4>("qvssum1");
 auto liran_test4d        = dm_device.get<real,4>("liran_test4d");
+auto liran_test4davg     = dm_device.get<real,4>("liran_test4davg");
 
 auto xkhvsum              = dm_device.get<real,2>("xkhvsum");
 auto wwqui_cen_sum        = dm_device.get<real,2>("wwqui_cen_sum");
@@ -251,6 +254,7 @@ parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix
   prainsum1(iz,iy,ix,iens)          = 0;
   qvssum1(iz,iy,ix,iens)            = 0;
   liran_test4d(iz,iy,ix,iens)       = 1;
+  liran_test4davg(iz,iy,ix,iens)    = 0;
 });
 printf("Liran check start ECPP init 1 here\n");
 // Initialization of 2D variables
@@ -288,12 +292,11 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto ntavg2     = coupler.get_option<int>("ecpp_ntavg2");
   auto gcm_dt     = coupler.get_option<real>("gcm_dt");
   auto crm_dt     = coupler.get_option<real>("crm_dt");
-  printf("%s %.2f\n", "Liran check ntavg1 00:", ntavg1);
-  printf("%s %.2f\n", "Liran check ntavg2 00:", ntavg2);
   printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
   printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
+  auto crm_cnt      = dm_device.get<int,1>("crm_cnt");
   auto qcloudsum1 = dm_device.get<real, 4>("qcloudsum1");
   auto qcloud_bfsum1 = dm_device.get<real, 4>("qcloud_bfsum1");
   auto qrainsum1 = dm_device.get<real, 4>("qrainsum1");
@@ -314,6 +317,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto prainsum1 = dm_device.get<real, 4>("prainsum1");
   auto qvssum1 = dm_device.get<real, 4>("qvssum1");
   auto liran_test4d = dm_device.get<real, 4>("liran_test4d");
+  auto liran_test4davg = dm_device.get<real, 4>("liran_test4davg");
 
   // Get values from PAM cloud fields
   auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk");
@@ -331,9 +335,23 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto qcloud                   = dm_device.get<real,4>("cloud_water");
   auto qrloud                   = dm_device.get<real,4>("rain");
   auto qiloud                   = dm_device.get<real,4>("ice");
-  printf("%s %.2f\n", "Liran check ntavg1 21:", ntavg1);
-  printf("%s %.2f\n", "Liran check ntavg2 21:", ntavg2);
+  auto qirloud                  = dm_device.get<real,4>("ice_rime");
   //------------------------------------------------------------------------------------------------
+  // Define variables used by subroutine categorization_stats
+  real4d cloudmixr("cloudmixr",nz,ny,nx,nens);
+  real4d cloudmixr_total("cloudmixr_total",nz,ny,nx,nens);
+  real4d precmixr_total("precmixr_total",nz,ny,nx,nens);
+  //real4d rhoair("rhoair",nz+1); //layer-averaged air density
+  // mhwang
+  // high thresholds are used to classify transport classes (following Xu et al., 2002, Q.J.R.M.S.
+  real cloudthresh_trans = 1e-5; //Cloud mixing ratio beyond which cell is "cloudy" to classify transport classes (kg/kg)   +++mhwang
+  // the maxium of cloudthres_trans and 0.01*qvs is used to classify transport class
+  real precthresh_trans  = 1e-4; //Preciptation mixing ratio beyond which cell is raining to classify transport classes (kg/kg)  !+++mwhang
+
+  //------------------------------------------------------------------------------------------------
+  parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
+    crm_cnt(iens) = crm_cnt(iens) + 1;
+  });
   // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
   real ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
   real ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
@@ -346,8 +364,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   printf("%s %.2f\n", "Liran check crm_dt 00:", crm_dt);
   printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss / crm_dt)", (ecpp_ntavg1_ss / crm_dt));
   printf("%s %.2f\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", (int)(ecpp_ntavg1_ss / crm_dt));
-  printf("%s %d %d\n", "Liran check ecpp_itavg1 1:", itavg1, ntavg1);
-  printf("%s %d %d\n", "Liran check ecpp_itavg2 1:", itavg2, ntavg2);
+  //printf("%s %d %d\n", "Liran check ecpp_itavg1 1:", itavg1, ntavg1);
+  //printf("%s %d %d\n", "Liran check ecpp_itavg2 1:", itavg2, ntavg2);
 
   // Set level-1 and level-2 averaging periods for ECPP
   
@@ -357,10 +375,10 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 ! Main code section...
 !------------------------------------------------------------------------
 */
-  itavg1 = nstep;
-  itavg2 = nstep;
-  printf("%s %d %d\n", "Liran check ecpp_itavg1 2:", itavg1, ntavg1);
-  printf("%s %d %d\n", "Liran check ecpp_itavg2 2:", itavg2, ntavg2);
+// We could either use itavg1 or crm_cnt. Walter: The later is better for using parallel_for. 
+  itavg1 = nstep+1; // The nstep begins from 0
+  itavg2 = nstep+1;
+
   double T_test = 283.14;
   double esat_test = 0;
   double polysvp(double T, int TYPE);
@@ -373,9 +391,17 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 printf("Liran check start ECPP ecpp_crm_stat 01\n");
 esat_test = esatw_crm(T_test);
 printf("%s %.2f\n", "Liran check evp:", esat_test);
-parallel_for( "update sums",
-              SimpleBounds<4>(nz, ny, nx, nens),
-              YAKL_LAMBDA (int k, int j, int i, int icrm) {
+parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
+  YAKL_LAMBDA (int k, int j, int i, int icrm) {
+    yakl::atomicAdd(liran_test4d(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
+    yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
+    yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
+    yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
+    yakl::atomicAdd(prainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
+    yakl::atomicAdd(qsnowsum1(k,j,i,icrm) , qirloud(k,j,i,icrm));
+    
+
+/*
     yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
     yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
     yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
@@ -388,6 +414,8 @@ parallel_for( "update sums",
     yakl::atomicAdd(qvssum1(k,j,i,icrm) , qvssum1(k,j,i,icrm));
     yakl::atomicAdd(prainsum1(k,j,i,icrm) , prainsum1(k,j,i,icrm));
     yakl::atomicAdd(precallsum1(k,j,i,icrm) , precallsum1(k,j,i,icrm));
+    */
+
 
 });
 
@@ -405,29 +433,52 @@ parallel_for( "update sums",
 printf("%s %.2f\n", "Liran check liran_test4d:", liran_test4d(10,10,10,10));
 printf("%s %d\n", "Liran check itavg1:", itavg1);
 printf("%s %d\n", "Liran check ntavg1:", ntavg1);
-if (ntavg1 != 0 && itavg1 % ntavg1 == 0) {
-    // itavg1 is divisible by ntavg1
-  printf("itavg1 is divisible by ntavg1\n");
-} else {
-    // itavg1 is not divisible by ntavg1
-  printf("itavg1 is not divisible by ntavg1\n");
-}
+parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
+  if (ntavg1 != 0 && crm_cnt(icrm) % ntavg1 == 0) {
+      // itavg1 is divisible by ntavg1
+    printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
+    liran_test4d(k,j,i,icrm) = liran_test4d(k,j,i,icrm)/ntavg1;
+    qcloudsum1(k,j,i,icrm)   = qcloudsum1(k,j,i,icrm)  /ntavg1;
+    qrainsum1(k,j,i,icrm)    = qrainsum1(k,j,i,icrm)   /ntavg1;
+    qicesum1(k,j,i,icrm)     = qicesum1(k,j,i,icrm)    /ntavg1;
+    qsnowsum1(k,j,i,icrm)    = qsnowsum1(k,j,i,icrm)   /ntavg1;
+
+    printf("%s %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
+  } else {
+      // itavg1 is not divisible by ntavg1
+    printf("itavg1 is not divisible by ntavg1\n");
+  }
+});
 //printf("%s %d\n", "Liran check itavg1 div ntavg1:", itavg1 % ntavg1);
 // Check if we have reached the end of the level 1 time averaging period.
 
-printf("Liran check start ECPP ecpp_crm_stat 02\n");
+
 // Increment the running sums for the level two variables that are not
 // already incremented. Consolidate from 3-D to 1-D columns.
 
+//------------------------------------------------------------------------------------------------
+/*
+Start of subroutine categorization_stats(
+Transport classification is based on total condensate (cloudmixr_total), and
+cloudy (liquid) and clear (non-liquid) classification is based on liquid water,
+because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
+Minghuai Wang, 2010-04
+*/
 
+parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
+  YAKL_LAMBDA (int k, int j, int i, int icrm) {
+    cloudmixr(k,j,i,icrm) = qcloudsum1(k,j,i,icrm);
+    cloudmixr_total(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qicesum1(k,j,i,icrm);
+    // total hydrometer (rain, snow, and graupel)
+    precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
+});
+
+
+
+
+
+printf("Liran check start ECPP ecpp_crm_stat 02\n");
 }
-
-
-
-
-
-
-
 
 
 

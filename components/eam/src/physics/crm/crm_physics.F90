@@ -1438,6 +1438,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('ncrms', ncrms )
       call pam_set_option('gcm_nlev', pver )
       call pam_set_option('crm_nz',crm_nz )
+      call pam_set_option('crm_nzp1',crm_nz+1 )
       call pam_set_option('crm_nx',crm_nx )
       call pam_set_option('crm_ny',crm_ny )
       call pam_set_option('rad_nx',crm_nx_rad)

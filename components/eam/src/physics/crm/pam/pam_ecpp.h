@@ -282,7 +282,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto &dm_device = coupler.get_data_manager_device_readwrite();
   auto &dm_host   = coupler.get_data_manager_host_readwrite();
   auto nens       = coupler.get_option<int>("ncrms");
-  auto nz         = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
+  auto nz         = coupler.get_option<int>("crm_nz");    // Note that nz   = crm_nz
+  auto nzp1       = coupler.get_option<int>("crm_nzp1");  // Note that nzp1  = crm_nz+1
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
@@ -336,12 +337,16 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto qrloud                   = dm_device.get<real,4>("rain");
   auto qiloud                   = dm_device.get<real,4>("ice");
   auto qirloud                  = dm_device.get<real,4>("ice_rime");
+  auto ref_pres                 = dm_device.get<real,2>("ref_pres");
   //------------------------------------------------------------------------------------------------
   // Define variables used by subroutine categorization_stats
   real4d cloudmixr("cloudmixr",nz,ny,nx,nens);
   real4d cloudmixr_total("cloudmixr_total",nz,ny,nx,nens);
   real4d precmixr_total("precmixr_total",nz,ny,nx,nens);
-  //real4d rhoair("rhoair",nz+1); //layer-averaged air density
+  real4d qvs("qvs",nz,ny,nx,nens);
+  real4d alt("alt",nz,ny,nx,nens);
+  real2d rhoair("rhoair",nzp1,nens); //layer-averaged air density
+  real2d cloudtop("cloudtop"   ,ny,nx);
   // mhwang
   // high thresholds are used to classify transport classes (following Xu et al., 2002, Q.J.R.M.S.
   real cloudthresh_trans = 1e-5; //Cloud mixing ratio beyond which cell is "cloudy" to classify transport classes (kg/kg)   +++mhwang
@@ -384,6 +389,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   double polysvp(double T, int TYPE);
 
 
+
+
 // Increment the 3-D running sums for averaging period 1.
 // Increments 3-D running sums for the variables averaged every
 // ntavg1_mm minutes.  
@@ -393,6 +400,11 @@ esat_test = esatw_crm(T_test);
 printf("%s %.2f\n", "Liran check evp:", esat_test);
 parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
   YAKL_LAMBDA (int k, int j, int i, int icrm) {
+
+    real EVS = esatw_crm(crm_temp(k,j,i,icrm)); //   ! saturation water vapor pressure (PA)
+    qvs(k,j,i,icrm) = .622*EVS/(ref_pres(icrm,k)*100.-EVS); //  ! pres(icrm,kk) with unit of hPa
+    alt(k,j,i,icrm) =  287.0*crm_temp(k,j,i,icrm)/(100.*ref_pres(icrm,k));
+    yakl::atomicAdd(altsum1(k,j,i,icrm) , alt(k,j,i,icrm));
     yakl::atomicAdd(liran_test4d(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
     yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
     yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
@@ -442,7 +454,7 @@ parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, i
     qrainsum1(k,j,i,icrm)    = qrainsum1(k,j,i,icrm)   /ntavg1;
     qicesum1(k,j,i,icrm)     = qicesum1(k,j,i,icrm)    /ntavg1;
     qsnowsum1(k,j,i,icrm)    = qsnowsum1(k,j,i,icrm)   /ntavg1;
-
+    altsum1(k,j,i,icrm)      = altsum1(k,j,i,icrm)     /ntavg1;
     printf("%s %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
   } else {
       // itavg1 is not divisible by ntavg1
@@ -473,9 +485,24 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
 });
 
-
-
-
+parallel_for( SimpleBounds<2>(nzp1,nens) , YAKL_LAMBDA (int k_gcm, int icrm) {
+  int k_crm= (gcm_nlev+1)-1-k_gcm;
+  parallel_for( SimpleBounds<2>(ny, nx),
+    YAKL_LAMBDA (int j, int i) {
+      /*
+      ! Get cloud top height
+      ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
+      ! downdraft is allowed above the condensate level (both liquid and ice).
+      */
+      cloudtop(j,i) = 1; // !Default to bottom level if no cloud in column.
+      if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
+        cloudtop(j,i) = k_crm; 
+      }
+  });
+  //int km0 = std::min(nz,k_crm)
+  //int km1 = std::max(1,k_crm-1)
+  //rhoair(k_crm,icrm) = rhoair(k_crm,icrm)+0.5*(1.0/alt(i,j,km1) + 1.0/alt(i,j,km0))/nxy
+});
 
 printf("Liran check start ECPP ecpp_crm_stat 02\n");
 }

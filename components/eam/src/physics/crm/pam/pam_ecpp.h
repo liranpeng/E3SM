@@ -410,7 +410,7 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
     yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
     yakl::atomicAdd(prainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
-    yakl::atomicAdd(qsnowsum1(k,j,i,icrm) , qirloud(k,j,i,icrm));
+    yakl::atomicAdd(qsnowsum1(k,j,i,icrm) , qsnowsum1(k,j,i,icrm)); // This is ZERO!! for now
     
 
 /*
@@ -484,24 +484,26 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     // total hydrometer (rain, snow, and graupel)
     precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
 });
-
-parallel_for( SimpleBounds<2>(nzp1,nens) , YAKL_LAMBDA (int k_gcm, int icrm) {
-  int k_crm= (gcm_nlev+1)-1-k_gcm;
-  parallel_for( SimpleBounds<2>(ny, nx),
-    YAKL_LAMBDA (int j, int i) {
-      /*
-      ! Get cloud top height
-      ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
-      ! downdraft is allowed above the condensate level (both liquid and ice).
-      */
-      cloudtop(j,i) = 1; // !Default to bottom level if no cloud in column.
-      if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
-        cloudtop(j,i) = k_crm; 
-      }
-  });
-  //int km0 = std::min(nz,k_crm)
-  //int km1 = std::max(1,k_crm-1)
-  //rhoair(k_crm,icrm) = rhoair(k_crm,icrm)+0.5*(1.0/alt(i,j,km1) + 1.0/alt(i,j,km0))/nxy
+int nxy = nx*ny;
+parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+  for (int k_gcm=0; k_gcm<nzp1; k_gcm++) {
+    //int l = plev-(k+1);
+    int k_crm= (gcm_nlev+1)-1-k_gcm;
+    /*
+    ! Get cloud top height
+    ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
+    ! downdraft is allowed above the condensate level (both liquid and ice).
+    */
+    cloudtop(j,i) = 1; // !Default to bottom level if no cloud in column.
+    if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
+      cloudtop(j,i) = k_crm; 
+    }
+  }
+  for (int k_crm=0; k_crm<nzp1; k_crm++) {
+    int km0 = std::min(nz,k_crm);
+    int km1 = std::max(1,k_crm-1);
+    rhoair(k_crm,icrm) = rhoair(k_crm,icrm)+0.5*(1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm))/nxy;
+  }
 });
 
 printf("Liran check start ECPP ecpp_crm_stat 02\n");

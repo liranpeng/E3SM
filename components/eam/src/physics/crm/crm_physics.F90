@@ -1438,7 +1438,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('ncrms', ncrms )
       call pam_set_option('gcm_nlev', pver )
       call pam_set_option('crm_nz',crm_nz )
-      call pam_set_option('crm_nzp1',crm_nz+1 )
+      call pam_set_option('crm_nzi',crm_nz+1 )
       call pam_set_option('crm_nx',crm_nx )
       call pam_set_option('crm_ny',crm_ny )
       call pam_set_option('rad_nx',crm_nx_rad)
@@ -1447,10 +1447,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('crm_dy',crm_dy )
       call pam_set_option('gcm_dt',ztodt )
       call pam_set_option('crm_dt',crm_dt )
-      call pam_set_option('ecpp_itavg1',nzero )
+      call pam_set_option('mode_updnthresh',16 )
+      call pam_set_option('plumetype',1 )
+      
       call pam_set_option('ecpp_itavg2',nzero )
       call pam_set_option('ecpp_ntavg1',nzero)
       call pam_set_option('ecpp_ntavg2',nzero )
+
+      call pam_set_option('ecpp_NCLASS_CL',nzero )
+      call pam_set_option('ecpp_ndraft_max',nzero )
+      call pam_set_option('ecpp_NCLASS_PR',nzero )
 
       call pam_register_dimension('gcm_lev',pver)
 

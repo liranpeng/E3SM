@@ -14,10 +14,14 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   auto &dm_host     = coupler.get_data_manager_host_readwrite();
   auto nens         = coupler.get_option<int>("ncrms");
   auto nz           = coupler.get_option<int>("crm_nz");  // Note that nz   = crm_nz
-  auto nzp1         = coupler.get_option<int>("crm_nzp1");  // Note that nz   = crm_nz
+  auto nzi         = coupler.get_option<int>("crm_nzi");  // Note that nz   = crm_nz
   auto nx           = coupler.get_option<int>("crm_nx");
   auto ny           = coupler.get_option<int>("crm_ny");
   auto gcm_nlev     = coupler.get_option<int>("gcm_nlev");
+
+  auto NCLASS_CL     = coupler.get_option<int>("ecpp_NCLASS_CL");
+  auto ndraft_max     = coupler.get_option<int>("ecpp_ndraft_max");
+  auto NCLASS_PR     = coupler.get_option<int>("ecpp_NCLASS_PR");
   printf("Liran check start ECPP init 2\n");
   auto gcm_dt       = coupler.get_option<real>("gcm_dt");
   auto crm_dt       = coupler.get_option<real>("crm_dt");
@@ -65,7 +69,7 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
 
   int nupdraft = 0;
   int ndndraft = 0;
-  int ndraft_max = 0;
+  ndraft_max = 0;
 
   int nupdraft_max = 0;  // Note: This variable is initialized but not used in the given code
   int ndndraft_max = 0;  // Note: This variable is initialized but not used in the given code
@@ -75,8 +79,8 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int NCLASS_TR = 0; // !Num. of transport classes
   int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
   int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
-  int NCLASS_CL = ncc_in; // Number of cloud classes
-  int NCLASS_PR = nprcp_in; // Number of precipitaion classes
+  NCLASS_CL = ncc_in; // Number of cloud classes
+  NCLASS_PR = nprcp_in; // Number of precipitaion classes
    
  
 // Sanity check... <not included NEED TO ADD LATER!!!!>
@@ -115,11 +119,17 @@ printf("Liran check start ECPP:\n");
 printf("\nValue of DN1: %d: ", DN1);
 printf("\nValue of NCLASS_TR: %d: ", NCLASS_TR);
 printf("\nValue of ndraft_max: %d: ", ndraft_max);
-
+printf("\nValue of nupdraft: %d: ", nupdraft);
+printf("\nValue of ndndraft: %d: ", ndndraft);
 printf("\nValue of nzstag: %d: ", nzstag);
 printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
 printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
 printf("\nValue of nens: %d: ", nens);
+
+coupler.set_option<int>("ecpp_NCLASS_CL",NCLASS_CL);
+coupler.set_option<int>("ecpp_NCLASS_PR",NCLASS_PR);
+coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
+
 dm_device.register_and_allocate<int>("crm_cnt"     , "number of crm timestep count",  {nens},{"nens"});
 dm_device.register_and_allocate<int>("ndown"       , "number of down count",  {nens},{"nens"});
 dm_device.register_and_allocate<int>("nup"         , "number of nup count",  {nens},{"nens"});
@@ -180,25 +190,25 @@ dm_device.register_and_allocate<real>("wdown_stddev_k", "<description>", {nz,nen
 dm_device.register_and_allocate<real>("wup_stddev_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_k", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzp1,nens}, {"zp1","nens"});
-dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzp1,nens}, {"zp1","nens"});
+dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzi,nens}, {"zp1","nens"});
+dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzi,nens}, {"zp1","nens"});
 printf("Liran check ECPP allocation done the first part\n");
 
-auto crm_cnt      = dm_device.get<int,1>("crm_cnt");
-auto ndown        = dm_device.get<int,1>("ndown");
-auto nup          = dm_device.get<int,1>("nup");
-auto kup_top      = dm_device.get<int,1>("kup_top");
-auto kdown_top    = dm_device.get<int,1>("kdown_top");
-auto wdown_bar    = dm_device.get<real,1>("wdown_bar");
+auto crm_cnt         = dm_device.get<int,1>("crm_cnt");
+auto ndown           = dm_device.get<int,1>("ndown");
+auto nup             = dm_device.get<int,1>("nup");
+auto kup_top         = dm_device.get<int,1>("kup_top");
+auto kdown_top       = dm_device.get<int,1>("kdown_top");
+auto wdown_bar       = dm_device.get<real,1>("wdown_bar");
 auto wdown_stddev    = dm_device.get<real,1>("wdown_stddev");
-auto wup_stddev    = dm_device.get<real,1>("wup_stddev");
-auto wup_rms    = dm_device.get<real,1>("wup_rms");
-auto wdown_rms    = dm_device.get<real,1>("wdown_rms");
-auto wup_bar      = dm_device.get<real,1>("wup_bar");
-auto updraftbase  = dm_device.get<real,1>("updraftbase");
-auto updrafttop   = dm_device.get<real,1>("updrafttop");
-auto dndrafttop   = dm_device.get<real,1>("dndrafttop");
-auto dndraftbase  = dm_device.get<real,1>("dndraftbase");
+auto wup_stddev      = dm_device.get<real,1>("wup_stddev");
+auto wup_rms         = dm_device.get<real,1>("wup_rms");
+auto wdown_rms       = dm_device.get<real,1>("wdown_rms");
+auto wup_bar         = dm_device.get<real,1>("wup_bar");
+auto updraftbase     = dm_device.get<real,1>("updraftbase");
+auto updrafttop      = dm_device.get<real,1>("updrafttop");
+auto dndrafttop      = dm_device.get<real,1>("dndrafttop");
+auto dndraftbase     = dm_device.get<real,1>("dndraftbase");
 
 printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
@@ -324,22 +334,30 @@ printf("Liran check start ECPP init end here\n");
 inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   using yakl::c::parallel_for;
   using yakl::c::SimpleBounds;
-  auto &dm_device = coupler.get_data_manager_device_readwrite();
-  auto &dm_host   = coupler.get_data_manager_host_readwrite();
-  auto nens       = coupler.get_option<int>("ncrms");
-  auto nz         = coupler.get_option<int>("crm_nz");    // Note that nz   = crm_nz
-  auto nzp1       = coupler.get_option<int>("crm_nzp1");  // Note that nzp1  = crm_nz+1
-  auto nx         = coupler.get_option<int>("crm_nx");
-  auto ny         = coupler.get_option<int>("crm_ny");
-  auto gcm_nlev   = coupler.get_option<int>("gcm_nlev");
-  auto ntavg1       = coupler.get_option<int>("ecpp_ntavg1");
-  auto ntavg2       = coupler.get_option<int>("ecpp_ntavg2");
+  auto &dm_device      = coupler.get_data_manager_device_readwrite();
+  auto &dm_host        = coupler.get_data_manager_host_readwrite();
+  auto nens            = coupler.get_option<int>("ncrms");
+  auto nz              = coupler.get_option<int>("crm_nz");    // Note that nz   = crm_nz
+  auto nzi            = coupler.get_option<int>("crm_nzi");  // Note that nzi  = crm_nz+1
+  auto nx              = coupler.get_option<int>("crm_nx");
+  auto ny              = coupler.get_option<int>("crm_ny");
+  auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
+  auto ntavg1          = coupler.get_option<int>("ecpp_ntavg1");
+  auto ntavg2          = coupler.get_option<int>("ecpp_ntavg2");
   auto mode_updnthresh = coupler.get_option<int>("mode_updnthresh");
-  auto plumetype  = coupler.get_option<int>("plumetype");
-  auto gcm_dt     = coupler.get_option<real>("gcm_dt");
-  auto crm_dt     = coupler.get_option<real>("crm_dt");
+  auto plumetype       = coupler.get_option<int>("plumetype");
+  auto NCLASS_CL       = coupler.get_option<int>("ecpp_NCLASS_CL");
+  auto ndraft_max      = coupler.get_option<int>("ecpp_ndraft_max");
+  auto NCLASS_PR       = coupler.get_option<int>("ecpp_NCLASS_PR");
+  auto gcm_dt          = coupler.get_option<real>("gcm_dt");
+  auto crm_dt          = coupler.get_option<real>("crm_dt");
+  
   printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
   printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
+  printf("Liran check start ECPP stage2:\n");
+  printf("\nValue of ndraft_max 2: %d: ", ndraft_max);
+  printf("\nValue of NCLASS_CL 2: %d: ", NCLASS_CL);
+  printf("\nValue of NCLASS_PR 2: %d: ", NCLASS_PR);
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
   auto crm_cnt                  = dm_device.get<int,1>("crm_cnt");
@@ -411,6 +429,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 
   //------------------------------------------------------------------------------------------------
   // Define variables used by subroutine categorization_stats
+  real7d mask_bnd("mask_bnd",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
+  real7d mask_cen("mask_cen",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
   real4d cloudmixr("cloudmixr",nz,ny,nx,nens);
   real4d cloudmixr_total("cloudmixr_total",nz,ny,nx,nens);
   real4d precmixr_total("precmixr_total",nz,ny,nx,nens);
@@ -421,11 +441,13 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   real3d cloudtop_downaa("cloudtop_downaa",ny,nx,nens);
   real3d cloudtop_upbb("cloudtop_upbb",ny,nx,nens);
   real3d cloudtop_downbb("cloudtop_downbb",ny,nx,nens);
-  real2d rhoair("rhoair",nzp1,nens); //layer-averaged air density
-  real2d tmpveca("rhoair",nz,nens);
-  real2d tmpvecb("rhoair",nz,nens);
   real3d wup_thresh_k("wup_thresh_k",nz,2,nens);
   real3d wdown_thresh_k("wdown_thresh_k",nz,2,nens);
+  real2d rhoair("rhoair",nzi,nens); //layer-averaged air density
+  real2d tmpveca("rhoair",nz,nens);
+  real2d tmpvecb("rhoair",nz,nens);
+  real2d wup_thresh("wup_thresh",nz,nens);
+  real2d wdown_thresh("wdown_thresh",nz,nens);
 
   real upthresh = 1.0;
   real downthresh = 1.0;
@@ -438,7 +460,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   real cloudthresh_trans = 1e-5; //Cloud mixing ratio beyond which cell is "cloudy" to classify transport classes (kg/kg)   +++mhwang
   // the maxium of cloudthres_trans and 0.01*qvs is used to classify transport class
   real precthresh_trans  = 1e-4; //Preciptation mixing ratio beyond which cell is raining to classify transport classes (kg/kg)  !+++mwhang
-
+  int runcount     = 0;
   int ijdel_upaa   = 0;
   int ijdel_downaa = 0;
   int ijdel_upbb   = 0;
@@ -448,6 +470,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
     crm_cnt(iens) = crm_cnt(iens) + 1;
   });
+  runcount = crm_cnt(0);
+  printf("%s %d\n", "Liran check runcount:", runcount);
   // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
   real ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
   real ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
@@ -525,326 +549,334 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
 
 */
 printf("%s %.2f\n", "Liran check liran_test4d:", liran_test4d(10,10,10,10));
-
-parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
-  if (ntavg1 != 0 && crm_cnt(icrm) % ntavg1 == 0) {
-      // itavg1 is divisible by ntavg1
-    printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
-    liran_test4d(k,j,i,icrm) = liran_test4d(k,j,i,icrm)/ntavg1;
-    qcloudsum1(k,j,i,icrm)   = qcloudsum1(k,j,i,icrm)  /ntavg1;
-    qrainsum1(k,j,i,icrm)    = qrainsum1(k,j,i,icrm)   /ntavg1;
-    qicesum1(k,j,i,icrm)     = qicesum1(k,j,i,icrm)    /ntavg1;
-    qsnowsum1(k,j,i,icrm)    = qsnowsum1(k,j,i,icrm)   /ntavg1;
-    altsum1(k,j,i,icrm)      = altsum1(k,j,i,icrm)     /ntavg1;
-    ecppwwsum1(k,j,i,icrm)   = ecppwwsum1(k,j,i,icrm)  /ntavg1;
-    printf("%s %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
-  } else {
-      // itavg1 is not divisible by ntavg1
-    printf("itavg1 is not divisible by ntavg1\n");
-  }
-});
-//printf("%s %d\n", "Liran check itavg1 div ntavg1:", itavg1 % ntavg1);
-// Check if we have reached the end of the level 1 time averaging period.
-
-
-// Increment the running sums for the level two variables that are not
-// already incremented. Consolidate from 3-D to 1-D columns.
-
-//------------------------------------------------------------------------------------------------
-/*
-Start of subroutine categorization_stats(
-Transport classification is based on total condensate (cloudmixr_total), and
-cloudy (liquid) and clear (non-liquid) classification is based on liquid water,
-because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
-Minghuai Wang, 2010-04
-*/
-
-parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
-  YAKL_LAMBDA (int k, int j, int i, int icrm) {
-    cloudmixr(k,j,i,icrm) = qcloudsum1(k,j,i,icrm);
-    cloudmixr_total(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qicesum1(k,j,i,icrm);
-    // total hydrometer (rain, snow, and graupel)
-    precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
-});
-int nxy = nx*ny;
-parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-  for (int k_gcm=0; k_gcm<nzp1; k_gcm++) {
-    //int l = plev-(k+1);
-    int k_crm= (gcm_nlev+1)-1-k_gcm;
-    /*
-    ! Get cloud top height
-    ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
-    ! downdraft is allowed above the condensate level (both liquid and ice).
-    */
-    cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
-    if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
-      cloudtop(j,i,icrm) = k_crm; 
+if (ntavg1 != 0 && runcount % ntavg1 == 0) {
+  parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
+    if (ntavg1 != 0 && crm_cnt(icrm) % ntavg1 == 0) {
+        // itavg1 is divisible by ntavg1
+      printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
+      liran_test4d(k,j,i,icrm) = liran_test4d(k,j,i,icrm)/ntavg1;
+      qcloudsum1(k,j,i,icrm)   = qcloudsum1(k,j,i,icrm)  /ntavg1;
+      qrainsum1(k,j,i,icrm)    = qrainsum1(k,j,i,icrm)   /ntavg1;
+      qicesum1(k,j,i,icrm)     = qicesum1(k,j,i,icrm)    /ntavg1;
+      qsnowsum1(k,j,i,icrm)    = qsnowsum1(k,j,i,icrm)   /ntavg1;
+      altsum1(k,j,i,icrm)      = altsum1(k,j,i,icrm)     /ntavg1;
+      ecppwwsum1(k,j,i,icrm)   = ecppwwsum1(k,j,i,icrm)  /ntavg1;
+      printf("%s %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
+    } else {
+        // itavg1 is not divisible by ntavg1
+      printf("%s %d\n", "\nitavg1 is not divisible by ntavg1", crm_cnt(icrm));
     }
-  }
-  for (int k_crm=0; k_crm<nzp1; k_crm++) {
-    int km0 = std::min(nz,k_crm);
-    int km1 = std::max(1,k_crm-1);
-    rhoair(k_crm,icrm) = rhoair(k_crm,icrm)+0.5*(1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm))/nxy;
-  }
-});
+  });
+  //printf("%s %d\n", "Liran check itavg1 div ntavg1:", itavg1 % ntavg1);
+  // Check if we have reached the end of the level 1 time averaging period.
 
 
- //------------------------------------------------------------------------------------------------
-  //parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
-    //crm_cnt(iens) = crm_cnt(iens) + 1;
-  //});
+  // Increment the running sums for the level two variables that are not
+  // already incremented. Consolidate from 3-D to 1-D columns.
 
-/*
-  !------------------------------------------------------------------------
-  subroutine determine_transport_thresh( &
-    nx, ny, nz, &
-    mode_updnthresh, upthresh, downthresh, &
-    upthresh2, downthresh2, cloudthresh, &
-    !     ctime, &
-    ww, rhoair, &
-    wdown_thresh_k, wup_thresh_k         &
-    , cloudtop                           &
-    , wup_rms_k, wup_bar_k, wup_stddev_k  &
-    , wdown_rms_k, wdown_bar_k, wdown_stddev_k  &
-    , kup_top, kdown_top)
-    !
-    ! Deterines the velocity thresholds used to indicate whether a cell's
-    ! motion is up, down, or quiescent. This is down for two threshold values
-    ! in each direction by level. A dozen options are available on how this
-    ! is done as documented below and at the top of postproc_wrfout.
-    !
-    ! William.Gustafosn@pnl.gov; 11-Sep-2008
-    ! Modified: William.Gustafosn@pnl.gov; 14-Apr-2009
+  //------------------------------------------------------------------------------------------------
+  /*
+  Start of subroutine categorization_stats(
+  Transport classification is based on total condensate (cloudmixr_total), and
+  cloudy (liquid) and clear (non-liquid) classification is based on liquid water,
+  because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
+  Minghuai Wang, 2010-04
+  */
+  printf("Liran check categorization_stats\n");
+  parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
+    YAKL_LAMBDA (int k, int j, int i, int icrm) {
+      cloudmixr(k,j,i,icrm) = qcloudsum1(k,j,i,icrm);
+      cloudmixr_total(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qicesum1(k,j,i,icrm);
+      // total hydrometer (rain, snow, and graupel)
+      precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
+  });
+  int nxy = nx*ny;
+  parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+    for (int k_gcm=0; k_gcm<nzi; k_gcm++) {
+      //int l = plev-(k+1);
+      int k_crm= (gcm_nlev+1)-1-k_gcm;
+      /*
+      ! Get cloud top height
+      ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
+      ! downdraft is allowed above the condensate level (both liquid and ice).
+      */
+      cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
+      if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
+        cloudtop(j,i,icrm) = k_crm; 
+      }
+    }
+    for (int k_crm=0; k_crm<nzi; k_crm++) {
+      int km0 = std::min(nz,k_crm);
+      int km1 = std::max(1,k_crm-1);
+      rhoair(k_crm,icrm) = rhoair(k_crm,icrm)+0.5*(1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm))/nxy;
+    }
+  });
+
+  printf("Liran check categorization_stats 2\n");
+   //------------------------------------------------------------------------------------------------
+    //parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
+      //crm_cnt(iens) = crm_cnt(iens) + 1;
+    //});
+
+  /*
     !------------------------------------------------------------------------
-*/
+    subroutine determine_transport_thresh( &
+      nx, ny, nz, &
+      mode_updnthresh, upthresh, downthresh, &
+      upthresh2, downthresh2, cloudthresh, &
+      !     ctime, &
+      ww, rhoair, &
+      wdown_thresh_k, wup_thresh_k         &
+      , cloudtop                           &
+      , wup_rms_k, wup_bar_k, wup_stddev_k  &
+      , wdown_rms_k, wdown_bar_k, wdown_stddev_k  &
+      , kup_top, kdown_top)
+      !
+      ! Deterines the velocity thresholds used to indicate whether a cell's
+      ! motion is up, down, or quiescent. This is down for two threshold values
+      ! in each direction by level. A dozen options are available on how this
+      ! is done as documented below and at the top of postproc_wrfout.
+      !
+      ! William.Gustafosn@pnl.gov; 11-Sep-2008
+      ! Modified: William.Gustafosn@pnl.gov; 14-Apr-2009
+      !------------------------------------------------------------------------
+  */
 
-/*
-    ! Calc cloudtop_upaa(i,j) = max( cloudtop(i-del:i+del,j-del:j+del) )
-    ! and similar for cloudtop_upbb, cloudtop_downaa/bb
-    ! (assume periodic BC here)
-*/
+  /*
+      ! Calc cloudtop_upaa(i,j) = max( cloudtop(i-del:i+del,j-del:j+del) )
+      ! and similar for cloudtop_upbb, cloudtop_downaa/bb
+      ! (assume periodic BC here)
+  */
 
+  printf("Liran check determine_transport_thresh 1\n");
 
-// if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then This is ignored
-int ijdel = std::max({ijdel_upaa, ijdel_upbb, ijdel_downaa, ijdel_downbb});
+  // if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then This is ignored
+  int ijdel = std::max({ijdel_upaa, ijdel_upbb, ijdel_downaa, ijdel_downbb});
 
-printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
-// Value of mode_updnthresh: 16
-printf("\nValue of ijdel: %d: ", ijdel);
-// Value of ijdel: 0
+  printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
+  // Value of mode_updnthresh: 16
+  printf("\nValue of ijdel: %d: ", ijdel);
+  // Value of ijdel: 0
 
-//if (ijdel > 0) then remove line 972 to 1008
+  //if (ijdel > 0) then remove line 972 to 1008
 
-/*
-    ! new coding here and below
-    !   cloudtop_up/downaa - only grid cells with k<=cloudtop_up/downaa
-    !                        are used for calc of wup_rms and wdn_rms
-    !   cloudtop_up/downbb - only grid cells with k<=cloudtop_up/downbb
-    !                        can be classified as up/downdraft
-*/
+  /*
+      ! new coding here and below
+      !   cloudtop_up/downaa - only grid cells with k<=cloudtop_up/downaa
+      !                        are used for calc of wup_rms and wdn_rms
+      !   cloudtop_up/downbb - only grid cells with k<=cloudtop_up/downbb
+      !                        can be classified as up/downdraft
+  */
 
-// if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then remove line 1015 to 1021
-/*
-    ! mode_updnthresh /= 12,13 corresponds to pre 11-jan-2008 versions of preprocessor
-    !   where only grid cells with k <= cloudtop(i,j) are used for calc of wup/dn_rms,
-    !   but any grid cells can be up/dn [even those with k >> cloudtop(i,j)]
-*/
+  // if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then remove line 1015 to 1021
+  /*
+      ! mode_updnthresh /= 12,13 corresponds to pre 11-jan-2008 versions of preprocessor
+      !   where only grid cells with k <= cloudtop(i,j) are used for calc of wup/dn_rms,
+      !   but any grid cells can be up/dn [even those with k >> cloudtop(i,j)]
+  */
 
-parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-  cloudtop_upaa(j,i,icrm)   = cloudtop(j,i,icrm);
-  cloudtop_downaa(j,i,icrm) = cloudtop(j,i,icrm);
-  cloudtop_upbb(j,i,icrm)   = nz;
-  cloudtop_downbb(j,i,icrm) = nz;
-});
+  parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+    cloudtop_upaa(j,i,icrm)   = cloudtop(j,i,icrm);
+    cloudtop_downaa(j,i,icrm) = cloudtop(j,i,icrm);
+    cloudtop_upbb(j,i,icrm)   = nz;
+    cloudtop_downbb(j,i,icrm) = nz;
+  });
 
-/*
-    ! Get standard deviation of up and down vertical velocity below the
-    ! cloud tops. For now, each cell is treated equally. We may want to
-    ! consider weighting each cell by its volume or mass.
-    !
-    ! Get the mean values first for wup and wdown
-*/
+  /*
+      ! Get standard deviation of up and down vertical velocity below the
+      ! cloud tops. For now, each cell is treated equally. We may want to
+      ! consider weighting each cell by its volume or mass.
+      !
+      ! Get the mean values first for wup and wdown
+  */
 
-parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-  
-  for (int k_crm=0; k_crm<cloudtop_upaa(j,i,icrm); k_crm++) {
-/*
-          !It is dimmensionally ok since w is dimmed nz+1
-          !We intentially ignore when w==0 as to not bias one direction
-          !over the other for the count. This differs from the Ferret code which
-          !assigns w=0 to up values.
-*/
-    if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
-      nup(icrm) = nup(icrm) + 1;
-      wup_bar(icrm) = wup_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
-      nup_k(k_crm,icrm) = nup_k(k_crm,icrm) + 1;
-      wup_bar_k(k_crm,icrm) = wup_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
-      kup_top(icrm)   = std::max(kup_top(icrm), k_crm);
+  parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+    
+    for (int k_crm=0; k_crm<cloudtop_upaa(j,i,icrm); k_crm++) {
+  /*
+            !It is dimmensionally ok since w is dimmed nz+1
+            !We intentially ignore when w==0 as to not bias one direction
+            !over the other for the count. This differs from the Ferret code which
+            !assigns w=0 to up values.
+  */
+      if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
+        nup(icrm) = nup(icrm) + 1;
+        wup_bar(icrm) = wup_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
+        nup_k(k_crm,icrm) = nup_k(k_crm,icrm) + 1;
+        wup_bar_k(k_crm,icrm) = wup_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
+        kup_top(icrm)   = std::max(kup_top(icrm), k_crm);
+      }
     }
-  }
 
-  for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
-    if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
-      ndown(icrm) = ndown(icrm) + 1;
-      wdown_bar(icrm) = wdown_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
-      ndown_k(k_crm,icrm) = ndown_k(k_crm,icrm) + 1;
-      wdown_bar_k(k_crm,icrm) = wdown_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
-      kdown_top(icrm)   = std::max(kdown_top(icrm), k_crm);
+    for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
+      if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
+        ndown(icrm) = ndown(icrm) + 1;
+        wdown_bar(icrm) = wdown_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
+        ndown_k(k_crm,icrm) = ndown_k(k_crm,icrm) + 1;
+        wdown_bar_k(k_crm,icrm) = wdown_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
+        kdown_top(icrm)   = std::max(kdown_top(icrm), k_crm);
+      }
     }
-  }
 
-});
+  });
 
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  if (nup(icrm) > 0.0) {
-    wup_bar(icrm)   = wup_bar(icrm) / nup(icrm);
-  }
-  if (ndown(icrm) > 0.0) {
-    wdown_bar(icrm)   = wdown_bar(icrm) / ndown(icrm);
-  }
-});
-
-parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
-  if (nup_k(k_crm,icrm) > 0.0) {
-    wup_bar_k(k_crm,icrm)   = wup_bar_k(k_crm,icrm) / nup_k(k_crm,icrm);
-  }
-  if (ndown_k(k_crm,icrm) > 0.0) {
-    wdown_bar_k(k_crm,icrm)   = wdown_bar_k(k_crm,icrm) / ndown_k(k_crm,icrm);
-  }
-});
-
-// !Now, we can get the std. dev. of wup and wdown.
-parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-  
-  for (int k_crm=0; k_crm<cloudtop_upaa(j,i,icrm); k_crm++) {
-/*
-          !We intentionally ignore when w==0 as to not bias one direction
-          !over the other.
-*/
-    if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
-      wup_stddev(icrm) = wup_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm));
-      wup_stddev_k(k_crm,icrm) = wup_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm));
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    if (nup(icrm) > 0.0) {
+      wup_bar(icrm)   = wup_bar(icrm) / nup(icrm);
     }
-  }
-
-  for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
-    if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
-      wdown_stddev(icrm) = wdown_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm));
-      wdown_stddev_k(k_crm,icrm) = wdown_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm));
+    if (ndown(icrm) > 0.0) {
+      wdown_bar(icrm)   = wdown_bar(icrm) / ndown(icrm);
     }
-  }
-});
+  });
 
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  if (nup(icrm) > 0.0) {
-    wup_stddev(icrm)   = wup_stddev(icrm) / nup(icrm);
-  }
-  if (ndown(icrm) > 0.0) {
-    wdown_stddev(icrm)   = wdown_stddev(icrm) / ndown(icrm);
-  }
-});
+  parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
+    if (nup_k(k_crm,icrm) > 0.0) {
+      wup_bar_k(k_crm,icrm)   = wup_bar_k(k_crm,icrm) / nup_k(k_crm,icrm);
+    }
+    if (ndown_k(k_crm,icrm) > 0.0) {
+      wdown_bar_k(k_crm,icrm)   = wdown_bar_k(k_crm,icrm) / ndown_k(k_crm,icrm);
+    }
+  });
 
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  wup_rms(icrm)   =  std::sqrt(wup_bar(icrm)*wup_bar(icrm)+wup_stddev(icrm)*wup_stddev(icrm));
-  wdown_rms(icrm)   = std::sqrt(wdown_bar(icrm)*wdown_bar(icrm)+wdown_stddev(icrm)*wdown_stddev(icrm));
-});
+  // !Now, we can get the std. dev. of wup and wdown.
+  parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+    
+    for (int k_crm=0; k_crm<cloudtop_upaa(j,i,icrm); k_crm++) {
+  /*
+            !We intentionally ignore when w==0 as to not bias one direction
+            !over the other.
+  */
+      if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
+        wup_stddev(icrm) = wup_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm));
+        wup_stddev_k(k_crm,icrm) = wup_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm));
+      }
+    }
 
-parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
-  if (nup_k(k_crm,icrm) > 0.0) {
-    wup_stddev_k(k_crm,icrm)   = wup_stddev_k(k_crm,icrm) / nup_k(k_crm,icrm);
-  }
-  if (ndown_k(k_crm,icrm) > 0.0) {
-    wdown_stddev_k(k_crm,icrm)   = wdown_stddev_k(k_crm,icrm) / ndown_k(k_crm,icrm);
-  }
-  wup_rms_k(k_crm,icrm) = std::sqrt( wup_bar_k(k_crm,icrm)*wup_bar_k(k_crm,icrm) + wup_stddev_k(k_crm,icrm)*wup_stddev_k(k_crm,icrm) );
-  wdown_rms_k(k_crm,icrm) = std::sqrt( wdown_bar_k(k_crm,icrm)*wdown_bar_k(k_crm,icrm) + wdown_stddev_k(k_crm,icrm)*wdown_stddev_k(k_crm,icrm) );
-});
+    for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
+      if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
+        wdown_stddev(icrm) = wdown_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm));
+        wdown_stddev_k(k_crm,icrm) = wdown_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm));
+      }
+    }
+  });
 
-// ! calculated smoothed (3-point) wup/down_rms
-parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
-  tmpveca(k_crm,icrm) = wup_rms_k(k_crm,icrm);
-  tmpvecb(k_crm,icrm) = wdown_rms_k(k_crm,icrm);
-});
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    if (nup(icrm) > 0.0) {
+      wup_stddev(icrm)   = wup_stddev(icrm) / nup(icrm);
+    }
+    if (ndown(icrm) > 0.0) {
+      wdown_stddev(icrm)   = wdown_stddev(icrm) / ndown(icrm);
+    }
+  });
+
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    wup_rms(icrm)   =  std::sqrt(wup_bar(icrm)*wup_bar(icrm)+wup_stddev(icrm)*wup_stddev(icrm));
+    wdown_rms(icrm)   = std::sqrt(wdown_bar(icrm)*wdown_bar(icrm)+wdown_stddev(icrm)*wdown_stddev(icrm));
+  });
+
+  parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
+    if (nup_k(k_crm,icrm) > 0.0) {
+      wup_stddev_k(k_crm,icrm)   = wup_stddev_k(k_crm,icrm) / nup_k(k_crm,icrm);
+    }
+    if (ndown_k(k_crm,icrm) > 0.0) {
+      wdown_stddev_k(k_crm,icrm)   = wdown_stddev_k(k_crm,icrm) / ndown_k(k_crm,icrm);
+    }
+    wup_rms_k(k_crm,icrm) = std::sqrt( wup_bar_k(k_crm,icrm)*wup_bar_k(k_crm,icrm) + wup_stddev_k(k_crm,icrm)*wup_stddev_k(k_crm,icrm) );
+    wdown_rms_k(k_crm,icrm) = std::sqrt( wdown_bar_k(k_crm,icrm)*wdown_bar_k(k_crm,icrm) + wdown_stddev_k(k_crm,icrm)*wdown_stddev_k(k_crm,icrm) );
+  });
+
+  // ! calculated smoothed (3-point) wup/down_rms
+  parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
+    tmpveca(k_crm,icrm) = wup_rms_k(k_crm,icrm);
+    tmpvecb(k_crm,icrm) = wdown_rms_k(k_crm,icrm);
+  });
 
 
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  for (int k_crm=1; k_crm<nz; k_crm++) {
-    wup_rms_ksmo(k_crm,icrm) = 0.0;
-    wdown_rms_ksmo(k_crm,icrm) = 0.0;
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    for (int k_crm=1; k_crm<nz; k_crm++) {
+      wup_rms_ksmo(k_crm,icrm) = 0.0;
+      wdown_rms_ksmo(k_crm,icrm) = 0.0;
+      real tmpsuma = 0.0;
+      for (int k_crm2=k_crm-1; k_crm<=k_crm+1; k_crm++) {
+        wup_rms_ksmo(k_crm,icrm) = wup_rms_ksmo(k_crm,icrm) + tmpveca(k_crm2,icrm);
+        wdown_rms_ksmo(k_crm,icrm) = wdown_rms_ksmo(k_crm,icrm) + tmpvecb(k_crm2,icrm);
+        tmpsuma = tmpsuma + 1.0;
+      }
+      tmpsuma = std::max(tmpsuma,1.0);
+      wup_rms_ksmo(k_crm,icrm) = wup_rms_ksmo(k_crm,icrm)/tmpsuma;
+      wdown_rms_ksmo(k_crm,icrm) = wdown_rms_ksmo(k_crm,icrm)/tmpsuma;
+    }
+    wup_rms_ksmo(0,icrm) = wup_rms_ksmo(1,icrm);
+    wdown_rms_ksmo(0,icrm) = wdown_rms_ksmo(1,icrm);
+    wup_rms_ksmo(nzi,icrm) = wup_rms_ksmo(nz,icrm);
+    wdown_rms_ksmo(nzi,icrm) = wdown_rms_ksmo(nz,icrm);
+  });
+  printf("Liran check determine_transport_thresh 2\n");
+  /*
+        ! case 16 & 17 -- added on 10-dec-2009
+        !    updraft   and k  > "updraft   center k",  use max( wup_rms_k, wup_rms )
+        !    updraft   and k <= "updraft   center k",  use wup_rms_k
+        !    downdraft and k  > "downdraft center k",  use max( wdown_rms_k, wdown_rms )
+        !    downdraft and k <= "downdraft center k",  use wdown_rms_k
+        ! The idea is to have a higher threshold in upper troposphere to
+        ! filter out gravity waves motions
+  */
+
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     real tmpsuma = 0.0;
-    for (int k_crm2=k_crm-1; k_crm<=k_crm+1; k_crm++) {
-      wup_rms_ksmo(k_crm,icrm) = wup_rms_ksmo(k_crm,icrm) + tmpveca(k_crm2,icrm);
-      wdown_rms_ksmo(k_crm,icrm) = wdown_rms_ksmo(k_crm,icrm) + tmpvecb(k_crm2,icrm);
-      tmpsuma = tmpsuma + 1.0;
+    real tmpw = 0.0;
+    real tmpw_minval = 0.10;
+    real tmpsumb = 1.0e-30;
+    for (int k_crm=0; k_crm<=nz; k_crm++) {
+      tmpw = wup_rms_k(k_crm,icrm);
+      tmpw = std::max(1.0e-4,tmpw);
+      tmpw = tmpw * rhoair(k_crm,icrm);
+      tmpsuma = tmpsuma + tmpw*k_crm; 
+      tmpsumb = tmpsumb + tmpw;
     }
-    tmpsuma = std::max(tmpsuma,1.0);
-    wup_rms_ksmo(k_crm,icrm) = wup_rms_ksmo(k_crm,icrm)/tmpsuma;
-    wdown_rms_ksmo(k_crm,icrm) = wdown_rms_ksmo(k_crm,icrm)/tmpsuma;
-  }
-  wup_rms_ksmo(0,icrm) = wup_rms_ksmo(1,icrm);
-  wdown_rms_ksmo(0,icrm) = wdown_rms_ksmo(1,icrm);
-  wup_rms_ksmo(nzp1,icrm) = wup_rms_ksmo(nz,icrm);
-  wdown_rms_ksmo(nzp1,icrm) = wdown_rms_ksmo(nz,icrm);
-});
-
-/*
-      ! case 16 & 17 -- added on 10-dec-2009
-      !    updraft   and k  > "updraft   center k",  use max( wup_rms_k, wup_rms )
-      !    updraft   and k <= "updraft   center k",  use wup_rms_k
-      !    downdraft and k  > "downdraft center k",  use max( wdown_rms_k, wdown_rms )
-      !    downdraft and k <= "downdraft center k",  use wdown_rms_k
-      ! The idea is to have a higher threshold in upper troposphere to
-      ! filter out gravity waves motions
-*/
-
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  real tmpsuma = 0.0;
-  real tmpw = 0.0;
-  real tmpw_minval = 0.10;
-  real tmpsumb = 1.0e-30;
-  for (int k_crm=0; k_crm<=nz; k_crm++) {
-    tmpw = wup_rms_k(k_crm,icrm);
-    tmpw = std::max(1.0e-4,tmpw);
-    tmpw = tmpw * rhoair(k_crm,icrm);
-    tmpsuma = tmpsuma + tmpw*k_crm; 
-    tmpsumb = tmpsumb + tmpw;
-  }
-  int kup_center1 = std::round(tmpsuma / tmpsumb);
-  for (int k_crm=0; k_crm<=nz; k_crm++) {
-    tmpw = wup_rms_k(k_crm,icrm);
-    if (k_crm > kup_center1){
-     tmpw = std::max( tmpw, wup_rms(icrm) );
-   }
-    tmpw = std::max( tmpw, tmpw_minval );
-    wup_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
-    wup_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
-  }
-});
-
-parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
-  real tmpsuma = 0.0;
-  real tmpw = 0.0;
-  real tmpw_minval = 0.10;
-  real tmpsumb = 1.0e-30;
-  for (int k_crm=0; k_crm<=nz; k_crm++) {
-    tmpw = wdown_rms_k(k_crm,icrm);
-    tmpw = std::max(1.0e-4,tmpw);
-    tmpw = tmpw * rhoair(k_crm,icrm);
-    tmpsuma = tmpsuma + tmpw*k_crm; 
-    tmpsumb = tmpsumb + tmpw;
-  }
-  int kup_center2 = std::round(tmpsuma / tmpsumb);
-  for (int k_crm=0; k_crm<=nz; k_crm++) {
-    tmpw = wdown_rms_k(k_crm,icrm);
-    if (k_crm > kup_center2) { 
-      tmpw = std::max( tmpw, wup_rms(icrm) );
+    int kup_center1 = std::round(tmpsuma / tmpsumb);
+    for (int k_crm=0; k_crm<=nz; k_crm++) {
+      tmpw = wup_rms_k(k_crm,icrm);
+      if (k_crm > kup_center1){
+       tmpw = std::max( tmpw, wup_rms(icrm) );
+     }
+      tmpw = std::max( tmpw, tmpw_minval );
+      wup_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
+      wup_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
     }
-    tmpw = std::max( tmpw, tmpw_minval );
-    wdown_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
-    wdown_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
-  }
+  });
 
-});
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    real tmpsuma = 0.0;
+    real tmpw = 0.0;
+    real tmpw_minval = 0.10;
+    real tmpsumb = 1.0e-30;
+    for (int k_crm=0; k_crm<=nz; k_crm++) {
+      tmpw = wdown_rms_k(k_crm,icrm);
+      tmpw = std::max(1.0e-4,tmpw);
+      tmpw = tmpw * rhoair(k_crm,icrm);
+      tmpsuma = tmpsuma + tmpw*k_crm; 
+      tmpsumb = tmpsumb + tmpw;
+    }
+    int kup_center2 = std::round(tmpsuma / tmpsumb);
+    for (int k_crm=0; k_crm<=nz; k_crm++) {
+      tmpw = wdown_rms_k(k_crm,icrm);
+      if (k_crm > kup_center2) { 
+        tmpw = std::max( tmpw, wup_rms(icrm) );
+      }
+      tmpw = std::max( tmpw, tmpw_minval );
+      wdown_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
+      wdown_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
+    }
+
+  });
+
+  parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
+    wdown_thresh(k_crm,icrm) = wdown_thresh_k(k_crm,0,icrm);
+    wup_thresh(k_crm,icrm) = wup_thresh_k(k_crm,0,icrm);
+  });
+
+}
 
 
 printf("\nLiran check start ECPP ecpp_crm_stat 02\n");

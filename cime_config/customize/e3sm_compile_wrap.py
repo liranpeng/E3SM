@@ -21,7 +21,10 @@ def run_cmd(args):
 
     arglen = len(args)
     target = None
-    for idx, arg in enumerate(args):
+    for (
+        idx,
+        arg,
+    ) in enumerate(args):
         if arg == "-o" and idx + 1 < arglen:
             target = args[idx + 1]
             break
@@ -38,10 +41,12 @@ def run_cmd(args):
 
     return result
 
+
 ###############################################################################
 def parse_command_line(args, _):
 ###############################################################################
     return args[1:]
+
 
 ###############################################################################
 def _main_func(description):
@@ -51,6 +56,7 @@ def _main_func(description):
     result = run_cmd(cmd_args)
 
     sys.exit(result)
+
 
 ###############################################################################
 

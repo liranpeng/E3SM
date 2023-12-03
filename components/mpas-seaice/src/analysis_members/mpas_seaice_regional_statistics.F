@@ -963,13 +963,13 @@ contains
       use seaice_mesh, only: &
            seaice_interpolate_vertex_to_cell
 
-      use seaice_constants, only: &
-           seaiceAlbedoWtVisibleDirect, &
-           seaiceAlbedoWtNearIRDirect, &
-           seaiceAlbedoWtVisibleDiffuse, &
-           seaiceAlbedoWtNearIRDiffuse, &
-           seaiceDensityIce, &
-           seaiceDensitySnow
+      use ice_constants_colpkg, only: &
+           awtvdr, &
+           awtidr, &
+           awtvdf, &
+           awtidf, &
+           rhoi, &
+           rhos
 
       type(domain_type), intent(inout) :: &
           domain
@@ -1138,13 +1138,13 @@ contains
                   ! kinetic energy
                   iSum = (iRegion-1) * nSums + 5
                   globalSumsIn(iSum) = globalSumsIn(iSum) + 0.5_RKIND * areaCell(iCell) * &
-                       (snowVolumeCell(iCell) * seaiceDensitySnow + iceVolumeCell(iCell) * seaiceDensityIce) * &
+                       (snowVolumeCell(iCell) * rhos + iceVolumeCell(iCell) * rhoi) * &
                        (uVelocityCell(iCell)**2 + vVelocityCell(iCell)**2)
 
                   ! total mass (for RMS ice speed)
                   iSum = (iRegion-1) * nSums + 6
                   globalSumsIn(iSum) = globalSumsIn(iSum) + areaCell(iCell) * &
-                       (snowVolumeCell(iCell) * seaiceDensitySnow + iceVolumeCell(iCell) * seaiceDensityIce)
+                       (snowVolumeCell(iCell) * rhos + iceVolumeCell(iCell) * rhoi)
 
                   ! average albedo
                   if (solarZenithAngleCosine(iCell) > 0.0_RKIND) then
@@ -1152,10 +1152,10 @@ contains
                      iSum = (iRegion-1) * nSums + 7
                      globalSumsIn(iSum) = globalSumsIn(iSum) + &
                           areaCell(iCell) * &
-                          (seaiceAlbedoWtVisibleDirect * albedoVisibleDirectCell(iCell) + &
-                           seaiceAlbedoWtNearIRDirect * albedoIRDirectCell(iCell) + &
-                           seaiceAlbedoWtVisibleDiffuse * albedoVisibleDiffuseCell(iCell) + &
-                           seaiceAlbedoWtNearIRDiffuse * albedoIRDiffuseCell(iCell))
+                          (awtvdr * albedoVisibleDirectCell(iCell) + &
+                           awtidr * albedoIRDirectCell(iCell) + &
+                           awtvdf * albedoVisibleDiffuseCell(iCell) + &
+                           awtidf * albedoIRDiffuseCell(iCell))
 
                      iSum = (iRegion-1) * nSums + 8
                      globalSumsIn(iSum) = globalSumsIn(iSum) + &

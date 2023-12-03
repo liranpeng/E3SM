@@ -201,10 +201,8 @@ contains
     ! the calling tree is given in the description of this module.
     !
     ! !USES:
-     use elm_varctl            , only : fates_spitfire_mode
-     use elm_varctl            , only : fates_seeddisp_cadence
-     use FATESFireFactoryMod   , only : scalar_lightning
-     use FatesInterfaceTypesMod, only : fates_dispersal_cadence_none
+     use elm_varctl           , only : fates_spitfire_mode
+     use FATESFireFactoryMod  , only : scalar_lightning
      
     ! !ARGUMENTS:
     implicit none
@@ -1389,11 +1387,6 @@ contains
     end do
     !$OMP END PARALLEL DO
 
-    ! Pass fates seed dispersal information to all nodes
-    if (use_fates) then
-       if (fates_seeddisp_cadence /= fates_dispersal_cadence_none) call alm_fates%WrapGlobalSeedDispersal()
-    end if
-    
     ! ============================================================================
     ! Determine gridcell averaged properties to send to atm
     ! ============================================================================

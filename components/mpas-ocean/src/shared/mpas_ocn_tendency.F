@@ -1141,9 +1141,8 @@ contains
          call ocn_tracer_hmix_tend(meshPool, layerThickEdgeMean, &
                                    layerThickness, zMid, tracerGroup, &
                                    RediKappa, slopeTriadUp, &
-                                   slopeTriadDown, limiterUp, &
-                                   limiterDown, dt, isActiveTracer, &
-                                   rediLimiterCount, &
+                                   slopeTriadDown, dt, isActiveTracer, &
+                                   RediKappaScaling, rediLimiterCount, &
                                    tracerGroupTend, err)
 
          if (computeBudgets) then

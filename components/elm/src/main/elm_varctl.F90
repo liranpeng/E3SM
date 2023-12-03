@@ -235,8 +235,6 @@ module elm_varctl
   integer, public            :: fates_parteh_mode = -9                  ! 1 => carbon only
                                                                         ! 2 => C+N+P (not enabled yet)
                                                                         ! no others enabled
-  integer, public            :: fates_seeddisp_cadence = iundef         ! 0 => no seed dispersal across gridcells
-                                                                        ! 1, 2, 3  => daily, monthly, or yearly seed dispersal
 
 
   !----------------------------------------------------------
@@ -528,11 +526,6 @@ module elm_varctl
    ! MPI syncing
    !----------------------------------------------------------
    integer, public :: mpi_sync_nstep_freq = 0
-   
-   !----------------------------------------------------------
-   ! Modified infiltration scheme in surface water storage
-   !----------------------------------------------------------
-   logical, public :: use_modified_infil = .false.
 
 contains
 

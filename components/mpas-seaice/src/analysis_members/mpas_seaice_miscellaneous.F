@@ -215,11 +215,11 @@ contains
 
    subroutine seaice_compute_miscellaneous(domain, instance, timeLevel, err)!{{{
 
-      use seaice_constants, only: &
-          seaiceAlbedoWtVisibleDirect, &
-          seaiceAlbedoWtNearIRDirect, &
-          seaiceAlbedoWtVisibleDiffuse, &
-          seaiceAlbedoWtNearIRDiffuse
+     use ice_constants_colpkg, only: &
+          awtvdr, &
+          awtidr, &
+          awtvdf, &
+          awtidf
 
       !-----------------------------------------------------------------
       !
@@ -290,18 +290,18 @@ contains
            iVertex
 
       logical, pointer :: &
-           config_use_column_physics, &
+           config_use_column_package, &
            config_use_column_shortwave, &
            config_use_velocity_solver
 
       err = 0
 
-      call MPAS_pool_get_config(domain % configs, "config_use_column_physics", config_use_column_physics)
+      call MPAS_pool_get_config(domain % configs, "config_use_column_package", config_use_column_package)
       call MPAS_pool_get_config(domain % configs, "config_use_column_shortwave", config_use_column_shortwave)
       call MPAS_pool_get_config(domain % configs, "config_use_velocity_solver", config_use_velocity_solver)
 
       ! grid cell mean salinity
-      if (config_use_column_physics) then
+      if (config_use_column_package) then
          block => domain % blocklist
          do while(associated(block))
 
@@ -325,7 +325,7 @@ contains
       endif
 
       ! snow/ice broad band albedo
-      if (config_use_column_physics .and. config_use_column_shortwave) then
+      if (config_use_column_package .and. config_use_column_shortwave) then
          block => domain % blocklist
          do while(associated(block))
 
@@ -345,10 +345,10 @@ contains
             do iCell = 1, nCellsSolve
 
                broadbandAlbedo(iCell) = &
-                   (seaiceAlbedoWtVisibleDirect * albedoVisibleDirectCell(iCell) + &
-                    seaiceAlbedoWtNearIRDirect * albedoIRDirectCell(iCell) + &
-                    seaiceAlbedoWtVisibleDiffuse * albedoVisibleDiffuseCell(iCell) + &
-                    seaiceAlbedoWtNearIRDiffuse * albedoIRDiffuseCell(iCell)) * &
+                    (awtvdr * albedoVisibleDirectCell(iCell) + &
+                    awtidr * albedoIRDirectCell(iCell) + &
+                    awtvdf * albedoVisibleDiffuseCell(iCell) + &
+                    awtidf * albedoIRDiffuseCell(iCell)) * &
                     iceAreaCellInitial(iCell)
 
             enddo ! iCell

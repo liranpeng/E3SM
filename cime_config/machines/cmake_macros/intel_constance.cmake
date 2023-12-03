@@ -1,4 +1,6 @@
 string(APPEND CPPDEFS " -DLINUX")
-string(APPEND CMAKE_Fortran_FLAGS_DEBUG " -check all -ftrapuv")
+if (DEBUG)
+  string(APPEND FFLAGS " -check all -ftrapuv")
+endif()
 set(PIO_FILESYSTEM_HINTS "lustre")
-string(APPEND CMAKE_EXE_LINKER_FLAGS " -lpmi")
+string(APPEND SLIBS " -lpmi")

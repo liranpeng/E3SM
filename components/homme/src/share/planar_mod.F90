@@ -43,7 +43,6 @@ module planar_mod
   public  :: PlaneEdgeCount
   public  :: PlaneElemCount
   public  :: convert_gbl_index_plane
-  public  :: plane_Dmap
 
   ! ===============================
   ! Private methods
@@ -51,6 +50,7 @@ module planar_mod
   private :: coordinates_atomic
   private :: metric_atomic
   private :: coriolis_init_atomic
+  private :: Dmap
 
 contains
 
@@ -310,7 +310,7 @@ call initgridedge(GridEdge,GridVertex)
   end subroutine coordinates_atomic
 
 
-  subroutine plane_Dmap(D, a,b, corners3D, ref_map, cartp, facenum)
+  subroutine Dmap(D, a,b, corners3D, ref_map, cartp, facenum)
     real (kind=real_kind), intent(out)  :: D(2,2)
     real (kind=real_kind), intent(in)     :: a,b
     type (cartesian3D_t)   :: corners3D(4)  !x,y,z coords of element corners
@@ -328,7 +328,7 @@ call initgridedge(GridEdge,GridVertex)
     D(2,1) = 0.0D0
     D(2,2) = dy/2.0d0
 
-  end subroutine plane_Dmap
+  end subroutine Dmap
 
   ! =========================================
   ! metric_atomic:
@@ -395,7 +395,7 @@ call initgridedge(GridEdge,GridVertex)
     do j=1,np
        do i=1,np
 
-          call plane_Dmap(elem%D(i,j,:,:),1.0D0,1.0D0,elem%corners3D,cubed_sphere_map)
+          call Dmap(elem%D(i,j,:,:),1.0D0,1.0D0,elem%corners3D,cubed_sphere_map)
 
           ! Numerical metric tensor based on analytic D: met = D^T times D
           ! (D maps between physical plane and reference element)

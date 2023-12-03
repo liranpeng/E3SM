@@ -98,7 +98,6 @@ contains
           cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)  
           cam_in(c)%qref(i)      =  x2a(index_x2a_Sx_qref,  ig)
           cam_in(c)%u10(i)       =  x2a(index_x2a_Sx_u10,   ig)
-          cam_in(c)%u10withgusts(i) = x2a(index_x2a_Sx_u10withgusts, ig)
           cam_in(c)%icefrac(i)   =  x2a(index_x2a_Sf_ifrac, ig)  
           cam_in(c)%ocnfrac(i)   =  x2a(index_x2a_Sf_ofrac, ig)
           cam_in(c)%landfrac(i)  =  x2a(index_x2a_Sf_lfrac, ig)
@@ -255,10 +254,11 @@ contains
     integer :: avsize, avnat
     integer :: i,m,c,n,ig       ! indices
     integer :: ncols            ! Number of columns
-    logical :: linearize_pbl_winds
+    logical :: linearize_pbl_winds, export_gustiness
     !-----------------------------------------------------------------------
 
-    call phys_getopts(linearize_pbl_winds_out=linearize_pbl_winds)
+    call phys_getopts(linearize_pbl_winds_out=linearize_pbl_winds, &
+                      export_gustiness_out=export_gustiness)
 
     ! Copy from component arrays into chunk array data structure
     ! Rearrange data from chunk structure into lat-lon buffer and subsequently
@@ -276,9 +276,7 @@ contains
              a2x(index_a2x_Sa_wsresp ,ig) = cam_out(c)%wsresp(i)
              a2x(index_a2x_Sa_tau_est,ig) = cam_out(c)%tau_est(i)
           end if
-          ! This check is only for SCREAMv0; otherwise gustiness should always
-          ! be exported.
-          if (index_a2x_Sa_ugust /= 0) then
+          if (export_gustiness) then
              a2x(index_a2x_Sa_ugust  ,ig) = cam_out(c)%ugust(i)
           end if
           a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   

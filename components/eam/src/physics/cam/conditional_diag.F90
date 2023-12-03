@@ -316,8 +316,6 @@ subroutine cnd_diag_readnl(nlfile)
 
             end if
          end do
-         ! metric_nver = -1 read in from namelist should be interpreted as pver for flexible configuration
-         where ( metric_nver(1:ncnd) == -1 ) metric_nver(1:ncnd) = pver
 
          if (any( metric_nver     (1:ncnd) <= 0   )) call endrun(subname//' error: need positive metric_nver for each metric_name')
          if (any( metric_cmpr_type(1:ncnd) == -99 )) call endrun(subname//' error: need valid metric_cmpr_type for each metric_name')
@@ -337,8 +335,6 @@ subroutine cnd_diag_readnl(nlfile)
          end do
          nqoi = ii
 
-         ! qoi_nver = -1 read in from namelist should be interpreted as pver for flexible configuration
-         where ( qoi_nver(1:nqoi) == -1 ) qoi_nver(1:nqoi) = pver
          if (any(qoi_nver(1:nqoi)<=0)) call endrun(subname//'error: need positive qoi_nver for each qoi_name')
 
          !---------------------------------------------

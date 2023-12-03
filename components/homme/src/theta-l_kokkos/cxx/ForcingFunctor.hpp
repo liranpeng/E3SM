@@ -157,8 +157,7 @@ public:
   }
 
   void init_buffers (const FunctorsBuffersManager& fbm) {
-    const int num_slots = std::max(m_tu_tracers_pre.get_num_ws_slots(),
-                                   m_tu_tracers.get_num_ws_slots());
+    const int num_slots = m_tu_tracers.get_num_ws_slots();
 
     constexpr int mid_size = NP*NP*NUM_LEV;
 
@@ -251,10 +250,8 @@ public:
     Kokkos::parallel_for("temperature, NH perturb press, FQps",m_policy_tracers_pre,*this);
     Kokkos::fence();
 
-    if (m_qsize > 0) {
-      Kokkos::parallel_for("apply tracers forcing", m_policy_tracers,*this);
-      Kokkos::fence();
-    }
+    Kokkos::parallel_for("apply tracers forcing", m_policy_tracers,*this);
+    Kokkos::fence();
 
     Kokkos::parallel_for("update temperature, pressure and phi", m_policy_tracers_post,*this);
     Kokkos::fence();
@@ -336,12 +333,7 @@ public:
       // Compute Rstar
       auto Rstar = Homme::subview(m_Rstar,kv.team_idx,igp,jgp);
       m_elem_ops.get_R_star (kv, m_moist,
-                             (m_moist ?
-                              Homme::subview(m_tracers.Q,kv.ie,0,igp,jgp) :
-                              // If not moist, qsize might be 0, so we can't use
-                              // Q. Use Rstar as an unused argument in its
-                              // place.
-                              Rstar),
+                             Homme::subview(m_tracers.Q,kv.ie,0,igp,jgp),
                              Rstar);
 
       // Compute temperature
@@ -445,9 +437,7 @@ public:
       // Compute Rstar
       auto Rstar = Homme::subview(m_Rstar,kv.team_idx,igp,jgp);
       m_elem_ops.get_R_star (kv, m_moist,
-                             (m_moist ?
-                              Homme::subview(m_tracers.Q,kv.ie,0,igp,jgp) :
-                              Rstar),
+                             Homme::subview(m_tracers.Q,kv.ie,0,igp,jgp),
                              Rstar);
 
       auto tn1    = Homme::subview(m_tn1,kv.ie,igp,jgp);

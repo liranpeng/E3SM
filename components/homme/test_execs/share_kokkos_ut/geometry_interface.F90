@@ -42,10 +42,8 @@ contains
 
 
   subroutine init_cube_geometry_f90 (ne_in) bind(c)
-    use iso_c_binding,   only: c_int
-    use control_mod,     only: topology
+    use iso_c_binding,   only : c_int
     use cube_mod,        only: CubeTopology, CubeElemCount, CubeEdgeCount
-    use planar_mod,      only: PlaneTopology, PlaneElemCount, PlaneEdgeCount
     use dimensions_mod,  only: nelem, nelemd, npart, np
     use dimensions_mod,  only: ne
     use gridgraph_mod,   only: allocate_gridvertex_nbrs
@@ -58,18 +56,10 @@ contains
     ! Locals
     !
     integer :: ie, num_edges
-    logical :: is_cube
-
-    is_cube = trim(topology) == 'cube'
 
     ne = ne_in
-    if (is_cube) then
-       nelem = CubeElemCount()
-       num_edges = CubeEdgeCount()
-    else
-       nelem = PlaneElemCount()
-       num_edges = PlaneEdgeCount()
-    end if
+    nelem = CubeElemCount()
+    num_edges = CubeEdgeCount()
 
     if (nelem < par%nprocs) then
        call abortmp('Error: too many MPI tasks. Run the test with less MPI ranks, or increase ne.')
@@ -84,11 +74,7 @@ contains
     enddo
 
     ! Generate mesh connectivity
-    if (is_cube) then
-       call CubeTopology(GridEdge, GridVertex)
-    else
-       call PlaneTopology(GridEdge,GridVertex)
-    end if
+    call CubeTopology(GridEdge, GridVertex)
 
     ! Set number of partitions before partitioning mesh
     npart = par%nprocs

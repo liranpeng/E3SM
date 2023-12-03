@@ -36,7 +36,6 @@ module ocn_forward_mode
 
    use ocn_time_integration
    use ocn_time_integration_split
-   use ocn_time_integration_split_ab2
    use ocn_time_integration_si
    use ocn_tendency
    use ocn_diagnostics
@@ -861,8 +860,7 @@ module ocn_forward_mode
       ! destroy the ocean mesh structure
       call ocn_meshDestroy(ierr)
 
-      if ( config_time_integrator == 'split_explicit' .or. &
-           config_time_integrator == 'split_explicit_ab2'      ) then
+      if ( config_time_integrator == 'split_explicit') then
          call mpas_dmpar_exch_group_destroy_reusable_buffers(domain, 'subcycleFields')
       else if ( config_time_integrator == 'split_implicit') then
          call ocn_time_integrator_si_variable_destroy()

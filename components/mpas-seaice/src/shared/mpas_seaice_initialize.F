@@ -53,12 +53,7 @@ contains
     use seaice_mesh, only: seaice_init_mesh
     use seaice_advection, only: seaice_init_advection
     use seaice_velocity_solver, only: seaice_init_velocity_solver
-    use seaice_icepack, only: &
-         seaice_init_icepack_constants, &
-         seaice_init_icepack_physics_package_parameters, &
-         seaice_init_icepack_physics_package_variables
     use seaice_column, only: &
-         seaice_init_column_constants, &
          seaice_init_column_physics_package_parameters, &
          seaice_init_column_physics_package_variables
     use seaice_forcing, only: seaice_forcing_init, seaice_reset_coupler_fluxes
@@ -84,21 +79,7 @@ contains
     type(block_type), pointer :: &
          block
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
     call mpas_log_write("seaice_init: Initialize sea-ice model")
-
-    call mpas_pool_get_config(domain % configs, "config_column_physics_type", config_column_physics_type)
-
-    ! set column constants
-    if (trim(config_column_physics_type) == "icepack") then
-       call seaice_init_icepack_constants()
-    else if (trim(config_column_physics_type) == "column_package") then
-       call seaice_init_column_constants()
-    else
-       call MPAS_log_write("Unknown config_column_physics_type: "//trim(config_column_physics_type), MPAS_LOG_CRIT)
-    endif ! config_column_physics_type
 
     ! init testing system test arrays
     call seaice_set_testing_system_test_arrays(domain)
@@ -124,11 +105,7 @@ contains
 
     ! init the basic column physics package
     call mpas_log_write(" Initialize column parameters...")
-    if (trim(config_column_physics_type) == "icepack") then
-       call seaice_init_icepack_physics_package_parameters(domain)
-    else if (trim(config_column_physics_type) == "column_package") then
-       call seaice_init_column_physics_package_parameters(domain)
-    endif ! config_column_physics_type
+    call seaice_init_column_physics_package_parameters(domain)
 
     ! init coupler fluxes
     call mpas_log_write(" Initialize coupler fields...")
@@ -150,11 +127,7 @@ contains
 
     ! column physics initialization
     call mpas_log_write(" Initialize column variables...")
-    if (trim(config_column_physics_type) == "icepack") then
-       call seaice_init_icepack_physics_package_variables(domain, clock)
-    else if (trim(config_column_physics_type) == "column_package") then
-       call seaice_init_column_physics_package_variables(domain, clock)
-    endif ! config_column_physics_type
+    call seaice_init_column_physics_package_variables(domain, clock)
 
     ! init ice state
     call mpas_log_write(" Initialize ice state...")
@@ -170,9 +143,6 @@ contains
 
     ! special boundaries tracers
     call seaice_set_special_boundaries_tracers(domain)
-
-    ! check constants
-    call seaice_check_constants
 
   end subroutine seaice_init!}}}
 
@@ -192,8 +162,6 @@ contains
        domain, &
        clock)!{{{
 
-    use seaice_icepack, only: &
-         seaice_init_icepack_shortwave
     use seaice_column, only: &
          seaice_init_column_shortwave
 
@@ -204,25 +172,16 @@ contains
          clock !< Input:
 
     logical, pointer :: &
-         config_use_column_physics, &
+         config_use_column_package, &
          config_use_column_shortwave, &
          config_do_restart
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
-    call MPAS_pool_get_config(domain % configs, "config_use_column_physics", config_use_column_physics)
+    call MPAS_pool_get_config(domain % configs, "config_use_column_package", config_use_column_package)
     call MPAS_pool_get_config(domain % configs, "config_use_column_shortwave", config_use_column_shortwave)
     call MPAS_pool_get_config(domain % configs, "config_do_restart", config_do_restart)
-    call MPAS_pool_get_config(domain % configs, "config_column_physics_type", config_column_physics_type)
 
-    if (config_use_column_physics .and. config_use_column_shortwave .and. .not. config_do_restart) then
-       if (trim(config_column_physics_type) == "icepack") then
-          call seaice_init_icepack_shortwave(domain, clock)
-       else if (trim(config_column_physics_type) == "column_package") then
-          call seaice_init_column_shortwave(domain, clock)
-       endif ! config_column_physics_type
-    endif
+    if (config_use_column_package .and. config_use_column_shortwave .and. .not. config_do_restart) &
+         call seaice_init_column_shortwave(domain, clock)
 
   end subroutine seaice_init_post_clock_advance
 
@@ -298,8 +257,6 @@ contains
     use seaice_testing, only: &
          seaice_init_square_test_case_hex, &
          seaice_init_square_point_test_case_hex
-    use seaice_icepack, only: &
-         seaice_icepack_aggregate
     use seaice_column, only: &
          seaice_column_aggregate
 
@@ -314,8 +271,7 @@ contains
 
     character(len=strKIND), pointer :: &
          config_initial_condition_type, &
-         config_initial_velocity_type, &
-         config_column_physics_type
+         config_initial_velocity_type
 
     integer, dimension(:), pointer :: &
          interiorVertex
@@ -330,7 +286,7 @@ contains
 
     logical, pointer :: &
          config_do_restart, &
-         config_use_column_physics
+         config_use_column_package
 
     call MPAS_pool_get_config(domain % configs, "config_do_restart", config_do_restart)
 
@@ -497,15 +453,9 @@ contains
     endif
 
     ! aggregate tracers even if restart
-    call MPAS_pool_get_config(domain % blocklist % configs, "config_use_column_physics", config_use_column_physics)
-    call MPAS_pool_get_config(domain % blocklist % configs, "config_column_physics_type", config_column_physics_type)
-    if (config_use_column_physics) then
-       if (trim(config_column_physics_type) == "icepack") then
-          call seaice_icepack_aggregate(domain)
-       else if (trim(config_column_physics_type) == "column_package") then
-          call seaice_column_aggregate(domain)
-       endif ! config_column_physics_type
-    endif
+    call MPAS_pool_get_config(domain % blocklist % configs, "config_use_column_package", config_use_column_package)
+    if (config_use_column_package) &
+         call seaice_column_aggregate(domain)
 
   end subroutine init_ice_state!}}}
 
@@ -644,14 +594,6 @@ contains
          colpkg_init_trcr, &
          colpkg_enthalpy_snow
 
-    use icepack_intfc, only: &
-         icepack_init_trcr, &
-         icepack_enthalpy_snow, &
-         icepack_warnings_aborted
-
-    use seaice_icepack, only: &
-         seaice_icepack_write_warnings
-
     type(block_type), intent(inout) :: &
          block !< Input/Output:
 
@@ -702,9 +644,6 @@ contains
          config_initial_latitude_north, &
          config_initial_latitude_south
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
     integer :: &
          iCell, &
          iSnowLayer, &
@@ -716,8 +655,6 @@ contains
     call MPAS_pool_get_config(configs, "config_initial_snow_volume", config_initial_snow_volume)
     call MPAS_pool_get_config(configs, "config_initial_latitude_north", config_initial_latitude_north)
     call MPAS_pool_get_config(configs, "config_initial_latitude_south", config_initial_latitude_south)
-
-    call MPAS_pool_get_config(configs, "config_column_physics_type", config_column_physics_type)
 
     call MPAS_pool_get_subpool(block % structs, "mesh", mesh)
     call MPAS_pool_get_subpool(block % structs, "tracers", tracers)
@@ -760,62 +697,30 @@ contains
        surfaceTemperature(1,:,iCell) = seaFreezingTemperature(iCell)
        iceEnthalpy(:,:,iCell)        = 0.0_RKIND
 
-       if (trim(config_column_physics_type) == "icepack") then
+       do iSnowLayer = 1, nSnowLayers
+          snowEnthalpy(iSnowLayer,:,iCell) = colpkg_enthalpy_snow(0.0_RKIND)
+       end do
 
-          do iSnowLayer = 1, nSnowLayers
-             snowEnthalpy(iSnowLayer,:,iCell) = icepack_enthalpy_snow(0.0_RKIND)
-          end do
+       if (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
+           latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) then
 
-          if (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
-              latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) then
+          ! has ice
+          iceAreaCategory(1,1,iCell)    = config_initial_ice_area
+          iceVolumeCategory(1,1,iCell)  = config_initial_ice_volume
+          snowVolumeCategory(1,1,iCell) = config_initial_snow_volume
+          surfaceTemperature(1,1,iCell) = -1.0_RKIND
 
-             ! has ice
-             iceAreaCategory(1,1,iCell)    = config_initial_ice_area
-             iceVolumeCategory(1,1,iCell)  = config_initial_ice_volume
-             snowVolumeCategory(1,1,iCell) = config_initial_snow_volume
-             surfaceTemperature(1,1,iCell) = -1.0_RKIND
-
-             call icepack_init_trcr(&
-                  airTemperature(iCell), &
-                  seaFreezingTemperature(iCell), &
-                  initialSalinityProfile(:,iCell), &
-                  initialMeltingTemperatureProfile(:,iCell), &
-                  surfaceTemperature(1,1,iCell), &
-                  nIceLayers, &
-                  nSnowLayers, &
-                  iceEnthalpy(:,1,iCell), &
-                  snowEnthalpy(:,1,iCell))
-             call seaice_icepack_write_warnings(icepack_warnings_aborted())
-          endif
-
-       else if (trim(config_column_physics_type) == "column_package") then
-
-          do iSnowLayer = 1, nSnowLayers
-             snowEnthalpy(iSnowLayer,:,iCell) = colpkg_enthalpy_snow(0.0_RKIND)
-          end do
-
-          if (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
-              latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) then
-
-             ! has ice
-             iceAreaCategory(1,1,iCell)    = config_initial_ice_area
-             iceVolumeCategory(1,1,iCell)  = config_initial_ice_volume
-             snowVolumeCategory(1,1,iCell) = config_initial_snow_volume
-             surfaceTemperature(1,1,iCell) = -1.0_RKIND
-
-             call colpkg_init_trcr(&
-                  airTemperature(iCell), &
-                  seaFreezingTemperature(iCell), &
-                  initialSalinityProfile(:,iCell), &
-                  initialMeltingTemperatureProfile(:,iCell), &
-                  surfaceTemperature(1,1,iCell), &
-                  nIceLayers, &
-                  nSnowLayers, &
-                  iceEnthalpy(:,1,iCell), &
-                  snowEnthalpy(:,1,iCell))
-          endif
-
-       endif ! config_column_physics_type
+          call colpkg_init_trcr(&
+               airTemperature(iCell), &
+               seaFreezingTemperature(iCell), &
+               initialSalinityProfile(:,iCell), &
+               initialMeltingTemperatureProfile(:,iCell), &
+               surfaceTemperature(1,1,iCell), &
+               nIceLayers, &
+               nSnowLayers, &
+               iceEnthalpy(:,1,iCell), &
+               snowEnthalpy(:,1,iCell))
+       endif
 
        iceAreaCell(iCell) = sum(iceAreaCategory(1,:,iCell))
        surfaceTemperatureCell(iCell) = -20.15_RKIND
@@ -848,17 +753,9 @@ contains
     use seaice_constants, only: &
          seaiceDegreesToRadians
 
-    use icepack_intfc, only: &
-         icepack_init_trcr, &
-         icepack_enthalpy_snow, &
-         icepack_warnings_aborted
-
-    use seaice_icepack, only: &
-         seaice_icepack_write_warnings
-
-    use seaice_column, only: &
-         seaice_column_init_trcr, &
-         seaice_column_enthalpy_snow
+    use ice_colpkg, only: &
+         colpkg_init_trcr, &
+         colpkg_enthalpy_snow
 
     type(block_type), intent(inout) :: &
          block !< Input/Output:
@@ -885,8 +782,8 @@ contains
          seaSurfaceTemperature, &
          seaFreezingTemperature
 
-    integer, dimension(:), pointer :: &
-         landIceMask
+      integer, dimension(:), pointer :: &
+           landIceMask
 
     real(kind=RKIND), dimension(:,:), pointer :: &
          initialSalinityProfile, &
@@ -917,11 +814,6 @@ contains
 
     real(kind=RKIND), parameter :: &
          initialCategorySnowThickness = 0.2_RKIND
-
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
-    call MPAS_pool_get_config(configs, "config_column_physics_type", config_column_physics_type)
 
     call MPAS_pool_get_config(configs, "config_initial_latitude_north", config_initial_latitude_north)
     call MPAS_pool_get_config(configs, "config_initial_latitude_south", config_initial_latitude_south)
@@ -973,48 +865,25 @@ contains
           landIceMask(iCell) == 0) then
 
           ! has ice
-          if (trim(config_column_physics_type) == "icepack") then
-             do iCategory = 1, nCategories
+          do iCategory = 1, nCategories
 
-                iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
-                iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
-                snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
-                     0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
+             iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
+             iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
+             snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
+                                                         0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
 
-                call icepack_init_trcr(&
-                     airTemperature(iCell), &
-                     seaFreezingTemperature(iCell), &
-                     initialSalinityProfile(:,iCell), &
-                     initialMeltingTemperatureProfile(:,iCell), &
-                     surfaceTemperature(1,iCategory,iCell), &
-                     nIceLayers, &
-                     nSnowLayers, &
-                     iceEnthalpy(:,iCategory,iCell), &
-                     snowEnthalpy(:,iCategory,iCell))
-                call seaice_icepack_write_warnings(icepack_warnings_aborted())
+             call colpkg_init_trcr(&
+                  airTemperature(iCell), &
+                  seaFreezingTemperature(iCell), &
+                  initialSalinityProfile(:,iCell), &
+                  initialMeltingTemperatureProfile(:,iCell), &
+                  surfaceTemperature(1,iCategory,iCell), &
+                  nIceLayers, &
+                  nSnowLayers, &
+                  iceEnthalpy(:,iCategory,iCell), &
+                  snowEnthalpy(:,iCategory,iCell))
 
-             enddo ! iCategory
-          else if (trim(config_column_physics_type) == "column_package") then
-             do iCategory = 1, nCategories
-
-                iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
-                iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
-                snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
-                     0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
-
-                call seaice_column_init_trcr(&
-                     airTemperature(iCell), &
-                     seaFreezingTemperature(iCell), &
-                     initialSalinityProfile(:,iCell), &
-                     initialMeltingTemperatureProfile(:,iCell), &
-                     surfaceTemperature(1,iCategory,iCell), &
-                     nIceLayers, &
-                     nSnowLayers, &
-                     iceEnthalpy(:,iCategory,iCell), &
-                     snowEnthalpy(:,iCategory,iCell))
-
-             enddo ! iCategory
-          endif ! config_column_physics_type
+          enddo ! iCategory
 
        else
 
@@ -1024,15 +893,9 @@ contains
           snowVolumeCategory(1,:,iCell) = 0.0_RKIND
 
           surfaceTemperature(1,:,iCell) = seaFreezingTemperature(iCell)
-          if (trim(config_column_physics_type) == "icepack") then
-             do iSnowLayer = 1, nSnowLayers
-                snowEnthalpy(iSnowLayer,:,iCell) = icepack_enthalpy_snow(0.0_RKIND)
-             end do
-          else if (trim(config_column_physics_type) == "column_package") then
-             do iSnowLayer = 1, nSnowLayers
-                snowEnthalpy(iSnowLayer,:,iCell) = seaice_column_enthalpy_snow(0.0_RKIND)
-             end do
-          endif ! config_column_physics_type
+          do iSnowLayer = 1, nSnowLayers
+             snowEnthalpy(iSnowLayer,:,iCell) = colpkg_enthalpy_snow(0.0_RKIND)
+          end do
 
        endif
 
@@ -1076,15 +939,8 @@ contains
     use seaice_constants, only: &
          seaicePuny
 
-    use icepack_intfc, only: &
-         icepack_init_itd, &
-         icepack_warnings_aborted
-
-    use seaice_icepack, only: &
-         seaice_icepack_write_warnings
-
-    use seaice_column, only: &
-         seaice_column_init_itd
+    use ice_colpkg, only: &
+         colpkg_init_itd
 
     ! Note: the resulting average ice thickness
     ! tends to be less than hbar due to the
@@ -1113,7 +969,7 @@ contains
          iCategory
 
     logical, pointer :: &
-         config_use_column_physics
+         config_use_column_package
 
     real(kind=RKIND), parameter :: &
          thicknessWithLargestArea = 3.0_RKIND ! initial ice thickness with greatest area
@@ -1123,11 +979,6 @@ contains
 
     character(len=strKIND) :: &
          abortMessage
-
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
-    call MPAS_pool_get_config(block % configs, "config_column_physics_type", config_column_physics_type)
 
     call MPAS_pool_get_subpool(block % structs, "initial", initial)
     call MPAS_pool_get_subpool(block % structs, "mesh", mesh)
@@ -1139,27 +990,22 @@ contains
     ! init caregory limits if needed
     !--------------------------------------------------------
 
-    call MPAS_pool_get_config(block % configs, "config_use_column_physics", config_use_column_physics)
+    call MPAS_pool_get_config(block % configs, "config_use_column_package", config_use_column_package)
 
-    if (.not. config_use_column_physics) then
+    if (.not. config_use_column_package) then
 
-       if (trim(config_column_physics_type) == "icepack") then
-          call icepack_init_itd(&
-               nCategories, &
-               categoryThicknessLimits)
-          call seaice_icepack_write_warnings(icepack_warnings_aborted())
-       else if (trim(config_column_physics_type) == "column_package") then
-          call seaice_column_init_itd(&
-               nCategories, &
-               categoryThicknessLimits, &
-               abortFlag, &
-               abortMessage)
-          if (abortFlag) then
-             call mpas_log_write(&
-                  "initial_category_areas_and_volumes: "//trim(abortMessage), &
-                  MPAS_LOG_CRIT)
-          endif
-       endif ! config_column_physics_type
+       call colpkg_init_itd(&
+            nCategories, &
+            categoryThicknessLimits, &
+            abortFlag, &
+            abortMessage)
+
+       ! code abort
+       if (abortFlag) then
+          call mpas_log_write(&
+               "initial_category_areas_and_volumes: "//trim(abortMessage), &
+               MPAS_LOG_CRIT)
+       endif
 
     endif
 
@@ -1232,14 +1078,6 @@ contains
          colpkg_init_trcr, &
          colpkg_enthalpy_snow
 
-    use icepack_intfc, only: &
-         icepack_init_trcr, &
-         icepack_enthalpy_snow, &
-         icepack_warnings_aborted
-
-    use seaice_icepack, only: &
-         seaice_icepack_write_warnings
-
     type(block_type), intent(inout) :: &
          block !< Input/Output:
 
@@ -1281,9 +1119,6 @@ contains
          config_initial_ice_volume, &
          config_initial_snow_volume
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
     integer :: &
          iCell, &
          iCategory, &
@@ -1293,7 +1128,6 @@ contains
     call MPAS_pool_get_config(configs, "config_initial_ice_area", config_initial_ice_area)
     call MPAS_pool_get_config(configs, "config_initial_ice_volume", config_initial_ice_volume)
     call MPAS_pool_get_config(configs, "config_initial_snow_volume", config_initial_snow_volume)
-    call MPAS_pool_get_config(configs, "config_column_physics_type", config_column_physics_type)
 
     call MPAS_pool_get_subpool(block % structs, "mesh", mesh)
     call MPAS_pool_get_subpool(block % structs, "tracers", tracers)
@@ -1323,52 +1157,25 @@ contains
 
     do iCell = 1, nCellsSolve
 
-       if (trim(config_column_physics_type) == "icepack") then
+       ! has ice
+       do iCategory = 1, nCategories
 
-          ! has ice
-          do iCategory = 1, nCategories
+          iceAreaCategory(1,iCategory,iCell)    = config_initial_ice_area
+          iceVolumeCategory(1,iCategory,iCell)  = config_initial_ice_volume
+          snowVolumeCategory(1,iCategory,iCell) = config_initial_snow_volume
 
-             iceAreaCategory(1,iCategory,iCell)    = config_initial_ice_area
-             iceVolumeCategory(1,iCategory,iCell)  = config_initial_ice_volume
-             snowVolumeCategory(1,iCategory,iCell) = config_initial_snow_volume
+          call colpkg_init_trcr(&
+               airTemperature(iCell), &
+               seaFreezingTemperature(iCell), &
+               initialSalinityProfile(:,iCell), &
+               initialMeltingTemperatureProfile(:,iCell), &
+               surfaceTemperature(1,iCategory,iCell), &
+               nIceLayers, &
+               nSnowLayers, &
+               iceEnthalpy(:,iCategory,iCell), &
+               snowEnthalpy(:,iCategory,iCell))
 
-             call icepack_init_trcr(&
-                  airTemperature(iCell), &
-                  seaFreezingTemperature(iCell), &
-                  initialSalinityProfile(:,iCell), &
-                  initialMeltingTemperatureProfile(:,iCell), &
-                  surfaceTemperature(1,iCategory,iCell), &
-                  nIceLayers, &
-                  nSnowLayers, &
-                  iceEnthalpy(:,iCategory,iCell), &
-                  snowEnthalpy(:,iCategory,iCell))
-             call seaice_icepack_write_warnings(icepack_warnings_aborted())
-
-          enddo ! iCategory
-
-       else if (trim(config_column_physics_type) == "column_package") then
-
-          ! has ice
-          do iCategory = 1, nCategories
-
-             iceAreaCategory(1,iCategory,iCell)    = config_initial_ice_area
-             iceVolumeCategory(1,iCategory,iCell)  = config_initial_ice_volume
-             snowVolumeCategory(1,iCategory,iCell) = config_initial_snow_volume
-
-             call colpkg_init_trcr(&
-                  airTemperature(iCell), &
-                  seaFreezingTemperature(iCell), &
-                  initialSalinityProfile(:,iCell), &
-                  initialMeltingTemperatureProfile(:,iCell), &
-                  surfaceTemperature(1,iCategory,iCell), &
-                  nIceLayers, &
-                  nSnowLayers, &
-                  iceEnthalpy(:,iCategory,iCell), &
-                  snowEnthalpy(:,iCategory,iCell))
-
-          enddo ! iCategory
-
-       endif ! config_column_physics_type
+       enddo ! iCategory
 
     enddo ! iCell
 
@@ -1405,17 +1212,9 @@ contains
     use seaice_constants, only: &
          seaiceDegreesToRadians
 
-    use icepack_intfc, only: &
-         icepack_init_trcr, &
-         icepack_enthalpy_snow, &
-         icepack_warnings_aborted
-
-    use seaice_icepack, only: &
-         seaice_icepack_write_warnings
-
-    use seaice_column, only: &
-         seaice_column_init_trcr, &
-         seaice_column_enthalpy_snow
+    use ice_colpkg, only: &
+         colpkg_init_trcr, &
+         colpkg_enthalpy_snow
 
     type(block_type), intent(inout) :: &
          block !< Input/Output:
@@ -1443,8 +1242,8 @@ contains
          seaFreezingTemperature, &
          categoryThicknessLimits
 
-    integer, dimension(:), pointer :: &
-         landIceMask
+      integer, dimension(:), pointer :: &
+           landIceMask
 
     real(kind=RKIND), dimension(:,:), pointer :: &
          initialSalinityProfile, &
@@ -1476,10 +1275,6 @@ contains
     real(kind=RKIND), parameter :: &
          initialCategorySnowThickness = 0.0_RKIND
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
-    call MPAS_pool_get_config(configs, "config_column_physics_type", config_column_physics_type)
     call MPAS_pool_get_config(configs, "config_initial_latitude_north", config_initial_latitude_north)
     call MPAS_pool_get_config(configs, "config_initial_latitude_south", config_initial_latitude_south)
 
@@ -1537,96 +1332,49 @@ contains
     initialCategoryIceThickness(4) = (categoryThicknessLimits(4) + categoryThicknessLimits(4)) * 0.5_RKIND
     initialCategoryIceThickness(5) = categoryThicknessLimits(5) + 1.0_RKIND
 
-    if (trim(config_column_physics_type) == "icepack") then
-       do iCell = 1, nCellsSolve
+    do iCell = 1, nCellsSolve
 
-          if (seaSurfaceTemperature(iCell) <= seaFreezingTemperature(iCell) + 0.2_RKIND .and. &
-               (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
-               latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) .and. &
-               landIceMask(iCell) == 0) then
+       if (seaSurfaceTemperature(iCell) <= seaFreezingTemperature(iCell) + 0.2_RKIND .and. &
+          (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
+           latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) .and. &
+          landIceMask(iCell) == 0) then
 
-             ! has ice
-             do iCategory = 1, nCategories
+          ! has ice
+          do iCategory = 1, nCategories
 
-                iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
-                iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
-                snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
-                     0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
+             iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
+             iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
+             snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
+                                                         0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
 
-                call icepack_init_trcr(&
-                     airTemperature(iCell), &
-                     seaFreezingTemperature(iCell), &
-                     initialSalinityProfile(:,iCell), &
-                     initialMeltingTemperatureProfile(:,iCell), &
-                     surfaceTemperature(1,iCategory,iCell), &
-                     nIceLayers, &
-                     nSnowLayers, &
-                     iceEnthalpy(:,iCategory,iCell), &
-                     snowEnthalpy(:,iCategory,iCell))
-                call seaice_icepack_write_warnings(icepack_warnings_aborted())
+             call colpkg_init_trcr(&
+                  airTemperature(iCell), &
+                  seaFreezingTemperature(iCell), &
+                  initialSalinityProfile(:,iCell), &
+                  initialMeltingTemperatureProfile(:,iCell), &
+                  surfaceTemperature(1,iCategory,iCell), &
+                  nIceLayers, &
+                  nSnowLayers, &
+                  iceEnthalpy(:,iCategory,iCell), &
+                  snowEnthalpy(:,iCategory,iCell))
 
-             enddo ! iCategory
+          enddo ! iCategory
 
-          else
+       else
 
-             ! no ice
-             iceAreaCategory(1,:,iCell)    = 0.0_RKIND
-             iceVolumeCategory(1,:,iCell)  = 0.0_RKIND
-             snowVolumeCategory(1,:,iCell) = 0.0_RKIND
+          ! no ice
+          iceAreaCategory(1,:,iCell)    = 0.0_RKIND
+          iceVolumeCategory(1,:,iCell)  = 0.0_RKIND
+          snowVolumeCategory(1,:,iCell) = 0.0_RKIND
 
-             surfaceTemperature(1,:,iCell) = seaFreezingTemperature(iCell)
-             do iSnowLayer = 1, nSnowLayers
-                snowEnthalpy(iSnowLayer,:,iCell) = icepack_enthalpy_snow(0.0_RKIND)
-             end do
+          surfaceTemperature(1,:,iCell) = seaFreezingTemperature(iCell)
+          do iSnowLayer = 1, nSnowLayers
+             snowEnthalpy(iSnowLayer,:,iCell) = colpkg_enthalpy_snow(0.0_RKIND)
+          end do
 
-          endif
+       endif
 
-       enddo ! iCell
-    else if (trim(config_column_physics_type) == "column_package") then
-       do iCell = 1, nCellsSolve
-
-          if (seaSurfaceTemperature(iCell) <= seaFreezingTemperature(iCell) + 0.2_RKIND .and. &
-               (latCell(iCell) > config_initial_latitude_north * seaiceDegreesToRadians .or. &
-               latCell(iCell) < config_initial_latitude_south * seaiceDegreesToRadians) .and. &
-               landIceMask(iCell) == 0) then
-
-             ! has ice
-             do iCategory = 1, nCategories
-
-                iceAreaCategory(1,iCategory,iCell)    = initialCategoryIceArea(iCategory)
-                iceVolumeCategory(1,iCategory,iCell)  = initialCategoryIceArea(iCategory) * initialCategoryIceThickness(iCategory)
-                snowVolumeCategory(1,iCategory,iCell) = min(iceAreaCategory(1,iCategory,iCell) * initialCategorySnowThickness, &
-                     0.2_RKIND * iceVolumeCategory(1,iCategory,iCell))
-
-                call seaice_column_init_trcr(&
-                     airTemperature(iCell), &
-                     seaFreezingTemperature(iCell), &
-                     initialSalinityProfile(:,iCell), &
-                     initialMeltingTemperatureProfile(:,iCell), &
-                     surfaceTemperature(1,iCategory,iCell), &
-                     nIceLayers, &
-                     nSnowLayers, &
-                     iceEnthalpy(:,iCategory,iCell), &
-                     snowEnthalpy(:,iCategory,iCell))
-
-             enddo ! iCategory
-
-          else
-
-             ! no ice
-             iceAreaCategory(1,:,iCell)    = 0.0_RKIND
-             iceVolumeCategory(1,:,iCell)  = 0.0_RKIND
-             snowVolumeCategory(1,:,iCell) = 0.0_RKIND
-
-             surfaceTemperature(1,:,iCell) = seaFreezingTemperature(iCell)
-             do iSnowLayer = 1, nSnowLayers
-                snowEnthalpy(iSnowLayer,:,iCell) = seaice_column_enthalpy_snow(0.0_RKIND)
-             end do
-
-          endif
-
-       enddo ! iCell
-    endif ! config_column_physics_type
+    enddo ! iCell
 
     ! clean up
     deallocate(initialCategoryIceArea)
@@ -2505,19 +2253,16 @@ contains
 
   subroutine initialize_coupler_fields(domain)
 
-    use icepack_intfc, only: &
-         icepack_liquidus_temperature
-    use seaice_icepack, only: &             !echmod - use icepack_intfc directly
-         seaice_icepack_init_ocean_conc, &
-         seaice_icepack_initial_air_drag_coefficient
-    use seaice_column, only: &
-         seaice_column_liquidus_temperature, &
-         seaice_column_init_ocean_conc, &
-         seaice_column_initial_air_drag_coefficient
+    use ice_colpkg, only: &
+         colpkg_liquidus_temperature, &
+         colpkg_init_ocean_conc
 
     use seaice_constants, only: &
          seaiceStefanBoltzmann, &
          seaiceFreshWaterFreezingPoint
+
+    use seaice_column, only: &
+         seaice_column_initial_air_drag_coefficient
 
     type(domain_type) :: domain
 
@@ -2580,7 +2325,7 @@ contains
     logical, pointer :: &
          config_do_restart, &
          config_use_column_biogeochemistry, &
-         config_use_column_physics, &
+         config_use_column_package, &
          config_use_aerosols
 
     integer, pointer :: &
@@ -2591,13 +2336,8 @@ contains
          iBio, &
          indexj
 
-    character(len=strKIND), pointer :: &
-         config_column_physics_type
-
     block => domain % blocklist
     do while (associated(block))
-
-       call MPAS_pool_get_config(block % configs, "config_column_physics_type", config_column_physics_type)
 
        !-------------------------------------------------------------
        ! Physics fluxes received from atmosphere
@@ -2628,15 +2368,9 @@ contains
 
        call MPAS_pool_get_config(block % configs, "config_do_restart", config_do_restart)
 
-       if (trim(config_column_physics_type) == "icepack") then
-          do iCell = 1, nCells
-             seaFreezingTemperature(iCell) = icepack_liquidus_temperature(seaSurfaceSalinity(iCell))
-          enddo ! iCell
-       else if (trim(config_column_physics_type) == "column_package") then
-          do iCell = 1, nCells
-             seaFreezingTemperature(iCell) = seaice_column_liquidus_temperature(seaSurfaceSalinity(iCell))
-          enddo ! iCell
-       endif ! config_column_physics_type
+       do iCell = 1, nCells
+          seaFreezingTemperature(iCell) = colpkg_liquidus_temperature(seaSurfaceSalinity(iCell))
+       enddo ! iCell
 
        ! sea surface temperature is not initialized if we're restarting
        if (.not. config_do_restart) then
@@ -2647,9 +2381,9 @@ contains
        ! fluxes sent to atmosphere
        !-------------------------------------------------------------
 
-       call MPAS_pool_get_config(block % configs, "config_use_column_physics", config_use_column_physics)
+       call MPAS_pool_get_config(block % configs, "config_use_column_package", config_use_column_package)
 
-       if (config_use_column_physics) then
+       if (config_use_column_package) then
 
           call MPAS_pool_get_subpool(block % structs, "atmos_fluxes", atmosFluxes)
           call MPAS_pool_get_array(atmosFluxes, "longwaveUp", longwaveUp)
@@ -2657,11 +2391,7 @@ contains
 
           call MPAS_pool_get_subpool(block % structs, "drag", drag)
           call MPAS_pool_get_array(drag, "airDragCoefficient", airDragCoefficient)
-          if (trim(config_column_physics_type) == "icepack") then
-             airDragCoefficient = seaice_icepack_initial_air_drag_coefficient()
-          else if (trim(config_column_physics_type) == "column_package") then
-             airDragCoefficient = seaice_column_initial_air_drag_coefficient()
-          endif ! config_column_physics_type
+          airDragCoefficient = seaice_column_initial_air_drag_coefficient()
 
        endif
 
@@ -2728,58 +2458,30 @@ contains
           call MPAS_pool_get_array(biogeochemistry, "carbonToNitrogenRatioAlgae", carbonToNitrogenRatioAlgae)
           call MPAS_pool_get_array(biogeochemistry, "carbonToNitrogenRatioDON", carbonToNitrogenRatioDON)
 
-          if (trim(config_column_physics_type) == "icepack") then
-             do iCell = 1, nCells
+          do iCell = 1, nCells
 
-                call seaice_icepack_init_ocean_conc(&
-                     oceanAmmoniumConc(iCell), &
-                     oceanDMSPConc(iCell), &
-                     oceanDMSConc(iCell), &
-                     oceanAlgaeConc(:,iCell), &
-                     oceanDOCConc(:,iCell), &
-                     oceanDICConc(:,iCell), &
-                     oceanDONConc(:,iCell), &
-                     oceanDissolvedIronConc(:,iCell), &
-                     oceanParticulateIronConc(:,iCell), &
-                     oceanHumicsConc(iCell), &
-                     oceanNitrateConc(iCell), &
-                     oceanSilicateConc(iCell),&
-                     oceanZAerosolConc(:,iCell), &
-                     maxDICType, &
-                     maxDONType, &
-                     maxIronType, &
-                     maxAerosolType, &
-                     carbonToNitrogenRatioAlgae, &
-                     carbonToNitrogenRatioDON)
+             call colpkg_init_ocean_conc(&
+                  oceanAmmoniumConc(iCell), &
+                  oceanDMSPConc(iCell), &
+                  oceanDMSConc(iCell), &
+                  oceanAlgaeConc(:,iCell), &
+                  oceanDOCConc(:,iCell), &
+                  oceanDICConc(:,iCell), &
+                  oceanDONConc(:,iCell), &
+                  oceanDissolvedIronConc(:,iCell), &
+                  oceanParticulateIronConc(:,iCell), &
+                  oceanHumicsConc(iCell), &
+                  oceanNitrateConc(iCell), &
+                  oceanSilicateConc(iCell),&
+                  oceanZAerosolConc(:,iCell), &
+                  maxDICType, &
+                  maxDONType, &
+                  maxIronType, &
+                  maxAerosolType, &
+                  carbonToNitrogenRatioAlgae, &
+                  carbonToNitrogenRatioDON)
 
-             enddo ! iCell
-          else if (trim(config_column_physics_type) == "column_package") then
-             do iCell = 1, nCells
-
-                call seaice_column_init_ocean_conc(&
-                     oceanAmmoniumConc(iCell), &
-                     oceanDMSPConc(iCell), &
-                     oceanDMSConc(iCell), &
-                     oceanAlgaeConc(:,iCell), &
-                     oceanDOCConc(:,iCell), &
-                     oceanDICConc(:,iCell), &
-                     oceanDONConc(:,iCell), &
-                     oceanDissolvedIronConc(:,iCell), &
-                     oceanParticulateIronConc(:,iCell), &
-                     oceanHumicsConc(iCell), &
-                     oceanNitrateConc(iCell), &
-                     oceanSilicateConc(iCell),&
-                     oceanZAerosolConc(:,iCell), &
-                     maxDICType, &
-                     maxDONType, &
-                     maxIronType, &
-                     maxAerosolType, &
-                     carbonToNitrogenRatioAlgae, &
-                     carbonToNitrogenRatioDON)
-
-             enddo ! iCell
-
-          endif ! config_column_physics_type
+          enddo ! iCell
 
        endif ! config_use_column_biogeochemistry
 
@@ -2879,32 +2581,5 @@ contains
   end subroutine init_test_ice_shelf_mask
 
 !-----------------------------------------------------------------------
-
-!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-!
-!  seaice_check_constants
-!
-!> \brief
-!> \author Elizabeth Hunke, LANL
-!> \date 29 September 2023
-!> \details
-!>
-!
-!-----------------------------------------------------------------------
-
-  subroutine seaice_check_constants
-
-    use seaice_constants, only: &
-         seaiceIceSnowEmissivity
-
-#ifdef CCSMCOUPLED
-    if (seaiceIceSnowEmissivity /= 1._RKIND) then
-      call mpas_log_write(&
-           'seaice_check_constants: seaiceIceSnowEmissivity out of bounds', &
-           messageType=MPAS_LOG_CRIT)
-    endif
-#endif
-
-  end subroutine seaice_check_constants
 
 end module seaice_initialize

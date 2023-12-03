@@ -2495,10 +2495,8 @@ contains
 
   subroutine prepare_oceanic_coupling_variables_ncar(block, firstTimeStep)
 
-    use icepack_intfc, only: &
-         icepack_sea_freezing_temperature
-    use seaice_column, only: &
-         seaice_column_sea_freezing_temperature
+    use ice_colpkg, only: &
+         colpkg_sea_freezing_temperature
 
     type (block_type), pointer :: block
 
@@ -2516,8 +2514,7 @@ contains
          seaFreezingTemperature
 
     character(len=strKIND), pointer :: &
-         config_sea_freezing_temperature_type, &
-         config_column_physics_type
+         config_sea_freezing_temperature_type
 
     logical, pointer :: &
          config_do_restart
@@ -2529,7 +2526,6 @@ contains
     integer :: &
          iCell
 
-    call MPAS_pool_get_config(block % configs, "config_column_physics_type", config_column_physics_type)
     call MPAS_pool_get_config(block % configs, "config_do_restart", config_do_restart)
     call MPAS_pool_get_config(block % configs, "config_sea_freezing_temperature_type", config_sea_freezing_temperature_type)
 
@@ -2544,29 +2540,16 @@ contains
     call MPAS_pool_get_array(ocean_coupling, "oceanMixedLayerDepth", oceanMixedLayerDepth)
     call MPAS_pool_get_array(ocean_coupling, "seaFreezingTemperature", seaFreezingTemperature)
 
-    if (trim(config_column_physics_type) == "icepack") then
-       do iCell = 1, nCellsSolve
+    do iCell = 1, nCellsSolve
 
-          ! ensure physical realism
-          seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
-          oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
+       ! ensure physical realism
+       seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
+       oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
 
-          ! sea freezing temperature
-          seaFreezingTemperature(iCell) = icepack_sea_freezing_temperature(seaSurfaceSalinity(iCell))
+       ! sea freezing temperature
+       seaFreezingTemperature(iCell) = colpkg_sea_freezing_temperature(seaSurfaceSalinity(iCell))
 
-       enddo ! iCell
-    else if (trim(config_column_physics_type) == "column_package") then
-       do iCell = 1, nCellsSolve
-
-          ! ensure physical realism
-          seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
-          oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
-
-          ! sea freezing temperature
-          seaFreezingTemperature(iCell) = seaice_column_sea_freezing_temperature(seaSurfaceSalinity(iCell))
-
-       enddo ! iCell
-    endif ! config_column_physics_type
+    enddo ! iCell
 
     ! only update sea surface temperature on first non-restart timestep
     if (firstTimeStep .and. .not. config_do_restart) then
@@ -2599,9 +2582,6 @@ contains
     use ice_colpkg, only: &
          colpkg_sea_freezing_temperature
 
-    use icepack_intfc, only: &
-         icepack_sea_freezing_temperature
-
     type (block_type), pointer :: block
 
     logical, intent(in) :: &
@@ -2618,8 +2598,7 @@ contains
          seaFreezingTemperature
 
     character(len=strKIND), pointer :: &
-         config_sea_freezing_temperature_type, &
-         config_column_physics_type
+         config_sea_freezing_temperature_type
 
     logical, pointer :: &
          config_do_restart
@@ -2645,29 +2624,16 @@ contains
     call MPAS_pool_get_array(ocean_coupling, "oceanMixedLayerDepth", oceanMixedLayerDepth)
     call MPAS_pool_get_array(ocean_coupling, "seaFreezingTemperature", seaFreezingTemperature)
 
-    if (trim(config_column_physics_type) == "icepack") then
-       do iCell = 1, nCellsSolve
+    do iCell = 1, nCellsSolve
 
-          ! ensure physical realism
-          seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
-          oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
+       ! ensure physical realism
+       seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
+       oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
 
-          ! sea freezing temperature
-          seaFreezingTemperature(iCell) = icepack_sea_freezing_temperature(seaSurfaceSalinity(iCell))
+       ! sea freezing temperature
+       seaFreezingTemperature(iCell) = colpkg_sea_freezing_temperature(seaSurfaceSalinity(iCell))
 
-       enddo ! iCell
-    else if (trim(config_column_physics_type) == "column_package") then
-       do iCell = 1, nCellsSolve
-
-          ! ensure physical realism
-          seaSurfaceSalinity(iCell)   = max(seaSurfaceSalinity(iCell), 0.0_RKIND)
-          oceanMixedLayerDepth(iCell) = max(oceanMixedLayerDepth(iCell), 0.0_RKIND)
-
-          ! sea freezing temperature
-          seaFreezingTemperature(iCell) = colpkg_sea_freezing_temperature(seaSurfaceSalinity(iCell))
-
-       enddo ! iCell
-    endif ! config_column_physics_type
+    enddo ! iCell
 
     ! only update sea surface temperature on first non-restart timestep
     if (firstTimeStep .and. .not. config_do_restart) then
@@ -3124,11 +3090,11 @@ contains
     type(domain_type) :: domain
 
     logical, pointer :: &
-         config_use_column_physics
+         config_use_column_package
 
-    call MPAS_pool_get_config(domain % blocklist % configs, "config_use_column_physics", config_use_column_physics)
+    call MPAS_pool_get_config(domain % blocklist % configs, "config_use_column_package", config_use_column_package)
 
-    if (config_use_column_physics) then
+    if (config_use_column_package) then
 
        call reset_atmospheric_coupler_fluxes(domain)
        call reset_ocean_coupler_fluxes(domain)

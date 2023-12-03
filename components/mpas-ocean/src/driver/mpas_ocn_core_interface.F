@@ -115,7 +115,6 @@ module ocn_core_interface
       logical, pointer :: thicknessFilterActive
       logical, pointer :: splitTimeIntegratorActive
       logical, pointer :: semiImplicitTimePKGActive
-      logical, pointer :: splitAB2TimeIntegratorActive
       logical, pointer :: windStressBulkPKGActive
       logical, pointer :: variableBottomDragPKGActive
       logical, pointer :: tracerBudgetActive
@@ -217,8 +216,7 @@ module ocn_core_interface
       if ( forwardModeActive ) then
          if (    config_time_integrator == trim('split_explicit') &
             .or. config_time_integrator == trim('unsplit_explicit') &
-            .or. config_time_integrator == trim('split_implicit') &
-            .or. config_time_integrator == trim('split_explicit_ab2') ) then
+            .or. config_time_integrator == trim('split_implicit') ) then
             splitTimeIntegratorActive = .true.
          end if
       endif
@@ -226,13 +224,6 @@ module ocn_core_interface
       if ( forwardModeActive ) then
          if (config_time_integrator == trim('split_implicit') ) then
             semiImplicitTimePKGActive = .true.
-         end if
-      endif
-
-      call mpas_pool_get_package(packagePool, 'splitAB2TimeIntegratorActive', splitAB2TimeIntegratorActive)
-      if ( forwardModeActive ) then
-         if (config_time_integrator == trim('split_explicit_ab2') ) then
-            splitAB2TimeIntegratorActive = .true.
          end if
       endif
 

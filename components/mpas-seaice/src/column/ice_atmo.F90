@@ -18,8 +18,7 @@
            c16, c20, p001, p01, p2, p4, p5, p75, puny, &
            cp_wv, cp_air, iceruf, zref, qqqice, TTTice, qqqocn, TTTocn, &
            Lsub, Lvap, vonkar, Tffresh, zvir, gravit, &
-           pih, rhoi, rhos, rhow
-      use ice_colpkg_shared, only: dragio
+           pih, dragio, rhoi, rhos, rhow
 
       implicit none
       save
@@ -263,7 +262,7 @@
 
       ustar_prev = c2 * ustar
 
-      k = 1
+      k = 0
       do while (abs(ustar - ustar_prev)/ustar > 0 .and. k <= natmiter)
 
          ustar_prev = ustar

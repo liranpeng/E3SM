@@ -1873,7 +1873,8 @@
       use ice_aerosol, only: update_aerosol
       use ice_atmo, only: neutral_drag_coeffs
       use ice_age, only: increment_age
-      use ice_constants_colpkg, only: rhofresh, rhoi, rhos, c0, c1, puny
+      use ice_constants_colpkg, only: rhofresh, rhoi, rhos, c0, c1, puny, &
+          snwlvlfac
       use ice_firstyear, only: update_FYarea
       use ice_flux_colpkg, only: set_sfcflux, merge_fluxes
       use ice_meltpond_cesm, only: compute_ponds_cesm
@@ -1906,11 +1907,6 @@
 
       logical (kind=log_kind), intent(in), optional :: &
          prescribed_ice  ! if .true., use prescribed ice instead of computed
-
-      !NJ: for bulk conservation fix
-      !real (kind=dbl_kind), intent(in) :: &
-      !   frain       , & ! rainfall rate (kg/m^2 s)
-      !   fsnow           ! snowfall rate (kg/m^2 s)
 
       real (kind=dbl_kind), intent(inout) :: &
          aice0       , & ! open water fraction
@@ -2078,24 +2074,19 @@
       !---------------------------------------------------------------
 
       fsloss = fsnow*aice0
-      !NJ: for bulk conservation fix
-      !fsloss = c0
 
       !---------------------------------------------------------------
       ! 30% rule for snow redistribution: precip factor
       !---------------------------------------------------------------
 
       if (trim(snwredist) == '30percent') then
-         worka = c0
+         worka = c0      
          do n = 1, ncat
-            worka = worka + alvl(n)*aicen(n)
+            worka = worka + alvl(n)
          enddo
-         worka  = worka * snwlvlfac/(c1+snwlvlfac)/aice
-         fsloss = fsloss + fsnow * worka
-         fsnow  =          fsnow * (c1-worka)
-         !NJ: for bulk conservation fix.
-         !don't change fsnow above
-         !fsloss = fsnow * worka
+         worka  = worka * snwlvlfac/(c1+snwlvlfac)
+         fsloss = fsloss + fsnow*(c1-worka)
+         fsnow  =          fsnow*    worka
       endif ! snwredist
 
       !-----------------------------------------------------------------
@@ -2259,11 +2250,9 @@
                                  mlt_onset,    frz_onset,    &
                                  yday,         dsnown   (n), &
                                  tr_rsnw,                    &
-                                 !NJ: for bulk conservation fix
-                                 !tr_rsnw,      fsloss      , &
                                  l_stop,       stop_label,   &
                                  prescribed_ice)
-
+               
             if (l_stop) then
                stop_label = 'ice: Vertical thermo error: '//trim(stop_label)
                return
@@ -2299,11 +2288,11 @@
       ! Transport liquid water in snow between layers and
       ! compute the meltpond contribution
       !-----------------------------------------------------------------
-      if (tr_rsnw) &
-         call drain_snow (dt,            nslyr,        &
-                          vsnon   (n) ,  aicen    (n), &
-                          smice  (:,n),  smliq  (:,n), &
-                          meltsliqn(n),  use_smliq_pnd)
+
+      call drain_snow (dt,            nslyr,        &
+                       vsnon   (n) ,  aicen    (n), &
+                       smice  (:,n),  smliq  (:,n), &
+                       meltsliqn(n),  use_smliq_pnd)
 
 
       !-----------------------------------------------------------------
@@ -3497,7 +3486,7 @@
                                    vice ,     vsno,          &
                                    trcr_base, n_trcr_strata, &
                                    nt_strata, trcr,          &
-                                   Tf)
+                                   Tf)   
 
       deallocate (atrcr)
 
@@ -3651,7 +3640,7 @@
                                      Uref)
 
       use ice_atmo, only: atmo_boundary_const, atmo_boundary_layer
-      use ice_constants_colpkg, only: c0, c1
+      use ice_constants_colpkg, only: c0
 
       character (len=3), intent(in) :: &
          sfctype      ! ice or ocean
@@ -3699,13 +3688,9 @@
       if (present(uvel)) then
          worku = uvel
       endif
-
       if (present(vvel)) then
          workv = vvel
       endif
-
-      ! NJ keeps icepack/colpkg BFB when atmbndy = 'constant'
-      Cdn_atm_ratio_n = c1
 
                if (trim(atmbndy) == 'constant') then
                   call atmo_boundary_const (sfctype,  calc_strair, &
@@ -3853,6 +3838,7 @@
                                    vicen,     vsnon,    &
                                    alvl,      vlvl,     &
                                    smice,     smliq,    &
+                                   rhos_effn, rhos_eff, &
                                    rhos_cmpn, rhos_cmp, &
                                    rsnw,      zqin1,    &
                                    zSin1,     Tsfc,     &
@@ -3861,7 +3847,7 @@
                                    fsloss,    fsnow,    &
                                    rhosnew,   rhosmax,  &
                                    windmin,   drhosdwind, &
-                                   snwlvlfac, snowage_tau, &
+                                   snowage_tau, &
                                    snowage_kappa, &
                                    snowage_drdt0, &
                                    idx_T_max, &
@@ -3891,8 +3877,7 @@
          rhosnew, & ! new snow density (kg/m^3)
          rhosmax, & ! maximum snow density (kg/m^3)
          windmin, & ! minimum wind speed to compact snow (m/s)
-         drhosdwind, & ! wind compaction factor (kg s/m^4)
-         snwlvlfac  ! snow loss factor for wind redistribution
+         drhosdwind ! wind compaction factor (kg s/m^4)
 
       real (kind=dbl_kind), dimension(:), intent(in) :: &
          aicen, & ! ice area fraction
@@ -3916,9 +3901,11 @@
          smice    , & ! mass of ice in snow (kg/m^3)
          smliq    , & ! mass of liquid in snow (kg/m^3)
          rsnw     , & ! snow grain radius (10^-6 m)
+         rhos_effn, & ! effective snow density: content (kg/m^3)
          rhos_cmpn    ! effective snow density: compaction (kg/m^3)
 
       real (kind=dbl_kind), intent(inout) :: &
+         rhos_eff , & ! mean effective snow density: content (kg/m^3)
          rhos_cmp     ! mean effective snow density: compaction (kg/m^3)
 
       ! dry snow aging parameters
@@ -3965,7 +3952,9 @@
 
       call snow_effective_density(nslyr,     ncat,     &
                                   vsnon,     vsno,     &
+                                  smice,     smliq,    &
                                   rhosnew,             &
+                                  rhos_effn, rhos_eff, &
                                   rhos_cmpn, rhos_cmp)
 
       !-----------------------------------------------------------------
@@ -3985,7 +3974,6 @@
                           fsloss,   rhos_cmpn, &
                           fsnow,    rhosmax,   &
                           windmin,  drhosdwind, &
-                          snwlvlfac,            &
                           l_stop,   stop_label)
       endif
 
@@ -4047,8 +4035,6 @@
            fbot_xfer_type_in, &
            calc_Tsfc_in, &
            ustar_min_in, &
-           dragio_in, &
-           ksno_in, &
            a_rapid_mode_in, &
            Rac_rapid_mode_in, &
            aspect_rapid_mode_in, &
@@ -4233,7 +4219,6 @@
            rhosnew_in, &
            rhosmax_in, &
            windmin_in, &
-           snwlvlfac_in, &
            drhosdwind_in)
            !restore_bgc_in)
 
@@ -4243,8 +4228,6 @@
              fbot_xfer_type, &
              calc_Tsfc, &
              ustar_min, &
-             dragio, &
-             ksno, & 
              a_rapid_mode, &
              Rac_rapid_mode, &
              aspect_rapid_mode, &
@@ -4429,7 +4412,6 @@
              rhosnew, &
              rhosmax, &
              windmin, &
-             snwlvlfac, &
              drhosdwind
             !restore_bgc
 
@@ -4532,9 +4514,6 @@
 !-----------------------------------------------------------------------
 ! Parameters for ocean
 !-----------------------------------------------------------------------
-
-        real (kind=dbl_kind), intent(in) :: &  
-             dragio_in          ! ice-ocean drago coefficient 
 
         logical (kind=log_kind), intent(in) :: &
              oceanmixed_ice_in           ! if true, use ocean mixed layer
@@ -4745,23 +4724,21 @@
       ! snow metamorphism parameters, set in namelist
       real (kind=dbl_kind), intent(in) :: &
          rsnw_fall_in , & ! fallen snow grain radius (10^-6 m))  54.5 um CLM **
-                          ! 30 um is minimum for defined mie properties 
+                       ! 30 um is minimum for defined mie properties 
          rsnw_tmax_in , & ! maximum dry metamorphism snow grain radius (10^-6 m)
-                          ! 1500 um is maximum for defined mie properties
+                       ! 1500 um is maximum for defined mie properties
          rhosnew_in   , & ! new snow density (kg/m^3)
          rhosmax_in   , & ! maximum snow density (kg/m^3)
          windmin_in   , & ! minimum wind speed to compact snow (m/s)
-         snwlvlfac_in , & ! snow loss factor for wind redistribution
-         drhosdwind_in, & ! wind compaction factor (kg s/m^4)
-         ksno_in          ! snow thermal conductivity (W/m/deg)
+         drhosdwind_in    ! wind compaction factor (kg s/m^4)
 
       character(len=char_len), intent(in) :: & 
          snwredist_in     ! type of snow redistribution
-                          ! '30percent' = 30% rule, precip only
-                          ! '30percentsw' = 30% rule with shortwave
-                          ! 'ITDsd' = Lecomte PhD, 2014
-                          ! 'ITDrdg' = like ITDsd but use level/ridged ice
-                          ! 'default' or 'none' = none
+                       ! '30percent' = 30% rule, precip only
+                       ! '30percentsw' = 30% rule with shortwave
+                       ! 'ITDsd' = Lecomte PhD, 2014
+                       ! 'ITDrdg' = like ITDsd but use level/ridged ice
+                       ! 'default' or 'none' = none
 
       logical (kind=log_kind), intent(in) :: &
          use_smliq_pnd_in ! if true, use snow liquid tracer for ponds
@@ -4771,8 +4748,6 @@
         fbot_xfer_type = fbot_xfer_type_in
         calc_Tsfc = calc_Tsfc_in
         ustar_min = ustar_min_in
-        dragio = dragio_in
-        ksno = ksno_in
         a_rapid_mode = a_rapid_mode_in
         Rac_rapid_mode = Rac_rapid_mode_in
         aspect_rapid_mode = aspect_rapid_mode_in
@@ -4956,7 +4931,6 @@
         rhosnew = rhosnew_in
         rhosmax = rhosmax_in
         windmin = windmin_in
-        snwlvlfac = snwlvlfac_in
         drhosdwind = drhosdwind_in
 
       end subroutine colpkg_init_parameters
@@ -4972,8 +4946,8 @@
            tr_pond_cesm_in , & ! if .true., use cesm pond tracer
            tr_pond_lvl_in  , & ! if .true., use level-ice pond tracer
            tr_pond_topo_in , & ! if .true., use explicit topography-based ponds
-           tr_snow_in      , & ! if .true., use snow density tracer (rhos_cmp)
-           tr_rsnw_in      , & ! if .true., use snow grain radius, liquid and mass tracers (smice, smliq, rsnw)
+           tr_snow_in      , & ! if .true., use snow trcrs (smice, smliq, rhos_cmp)
+           tr_rsnw_in      , & ! if .true., use snow grain radius tracer
            tr_aero_in      , & ! if .true., use aerosol tracers
            tr_brine_in     , & ! if .true., brine height differs from ice thickness
            tr_bgc_S_in     , & ! if .true., use zsalinity
@@ -4999,8 +4973,8 @@
              tr_pond_cesm , & ! if .true., use cesm pond tracer
              tr_pond_lvl  , & ! if .true., use level-ice pond tracer
              tr_pond_topo , & ! if .true., use explicit topography-based ponds
-             tr_snow      , & ! if .true., use snow density tracer (rhos_cmp)
-             tr_rsnw      , & ! if .true., use snow grain radius, liquid and mass tracers (smice, smliq, rsnw)
+             tr_snow      , & ! if .true., use snow trcrs (smice, smliq, rhos_cmp)
+             tr_rsnw      , & ! if .true., use snow grain radius tracer
              tr_aero      , & ! if .true., use aerosol tracers
              tr_brine     , & ! if .true., brine height differs from ice thickness
              tr_bgc_S     , & ! if .true., use zsalinity
@@ -5026,8 +5000,8 @@
              tr_pond_cesm_in , & ! if .true., use cesm pond tracer
              tr_pond_lvl_in  , & ! if .true., use level-ice pond tracer
              tr_pond_topo_in , & ! if .true., use explicit topography-based ponds
-             tr_snow_in      , & ! if .true., use snow density tracer (rhos_cmp)
-             tr_rsnw_in      , & ! if .true., use snow grain radius, liquid and mass tracers (smice, smliq, rsnw)
+             tr_snow_in      , & ! if .true., use snow trcrs (smice, smliq, rhos_cmp)
+             tr_rsnw_in      , & ! if .true., use snow grain radius tracer
              tr_aero_in      , & ! if .true., use aerosol tracers
              tr_brine_in     , & ! if .true., brine height differs from ice thickness
              tr_bgc_S_in     , & ! if .true., use zsalinity

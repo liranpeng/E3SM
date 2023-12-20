@@ -20,7 +20,7 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   auto gcm_nlev     = coupler.get_option<int>("gcm_nlev");
 
   auto NCLASS_CL     = coupler.get_option<int>("ecpp_NCLASS_CL");
-  auto ndraft_max     = coupler.get_option<int>("ecpp_ndraft_max");
+  auto ndraft_max    = coupler.get_option<int>("ecpp_ndraft_max");
   auto NCLASS_PR     = coupler.get_option<int>("ecpp_NCLASS_PR");
   printf("Liran check start ECPP init 2\n");
   auto gcm_dt       = coupler.get_option<real>("gcm_dt");
@@ -75,8 +75,15 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int ndndraft_max = 0;  // Note: This variable is initialized but not used in the given code
 
   // variables should inside ecppvars.h
+
+  int CLR = 1;       // Clear sub-class
+  int CLD = 2;       // Cloudy sub-class
+  int PRN = 1;       // Not precipitating sub-class
+  int PRY = 2;       // Is precipitating sub-class
   int DN1 = 0; // !First index of downward classes
   int NCLASS_TR = 0; // !Num. of transport classes
+  int QUI       = 1; // Quiescent class
+  int UP1       = 2; // First index for upward classes
   int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
   int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
   NCLASS_CL = ncc_in; // Number of cloud classes
@@ -145,10 +152,7 @@ dm_device.register_and_allocate<real>("updraftbase", "<description>",  {nens}, {
 dm_device.register_and_allocate<real>("updrafttop", "<description>" ,  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndrafttop", "<description>" ,  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndraftbase", "<description>",  {nens}, {"nens"});
-
-
 // 4D vector allocations
-
 dm_device.register_and_allocate<real>("qlsink_bf" , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("prain"     , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("qcloud_bf" , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
@@ -190,8 +194,8 @@ dm_device.register_and_allocate<real>("wdown_stddev_k", "<description>", {nz,nen
 dm_device.register_and_allocate<real>("wup_stddev_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_k", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzi,nens}, {"zp1","nens"});
-dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzi,nens}, {"zp1","nens"});
+dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
+dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
 printf("Liran check ECPP allocation done the first part\n");
 
 auto crm_cnt         = dm_device.get<int,1>("crm_cnt");
@@ -323,11 +327,8 @@ parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   //wup_thresh(iz,iens)              = 0;  // Note: This might need adjustment for nz+1 dimension
   //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nz+1 dimension
 });
-
 printf("Liran check start ECPP init end here\n");
-
 }
-
 
 // =========================================================================|ecpp_crm_stat|=========
 // allocate and initialize variables
@@ -336,28 +337,53 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   using yakl::c::SimpleBounds;
   auto &dm_device      = coupler.get_data_manager_device_readwrite();
   auto &dm_host        = coupler.get_data_manager_host_readwrite();
-  auto nens            = coupler.get_option<int>("ncrms");
-  auto nz              = coupler.get_option<int>("crm_nz");    // Note that nz   = crm_nz
-  auto nzi            = coupler.get_option<int>("crm_nzi");  // Note that nzi  = crm_nz+1
+  auto nens            = coupler.get_option<int>("ncrms");    // Note that nz   = crm_nz
+  auto nzi             = coupler.get_option<int>("crm_nzi");  // Note that nzi  = crm_nz+1
   auto nx              = coupler.get_option<int>("crm_nx");
   auto ny              = coupler.get_option<int>("crm_ny");
+  auto nz              = coupler.get_option<int>("crm_nz");
   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
   auto ntavg1          = coupler.get_option<int>("ecpp_ntavg1");
   auto ntavg2          = coupler.get_option<int>("ecpp_ntavg2");
   auto mode_updnthresh = coupler.get_option<int>("mode_updnthresh");
   auto plumetype       = coupler.get_option<int>("plumetype");
-  auto NCLASS_CL       = coupler.get_option<int>("ecpp_NCLASS_CL");
+  //auto NCLASS_CL       = coupler.get_option<int>("ecpp_NCLASS_CL");
   auto ndraft_max      = coupler.get_option<int>("ecpp_ndraft_max");
-  auto NCLASS_PR       = coupler.get_option<int>("ecpp_NCLASS_PR");
+  //auto NCLASS_PR       = coupler.get_option<int>("ecpp_NCLASS_PR");
   auto gcm_dt          = coupler.get_option<real>("gcm_dt");
   auto crm_dt          = coupler.get_option<real>("crm_dt");
-  
+  auto crm_count       = coupler.get_option<int>("crm_count");
+
+  int nupdraft = 0;
+  int ndndraft = 0;
+  int CLR = 1;       // Clear sub-class
+  int CLD = 2;       // Cloudy sub-class
+  int PRN = 1;       // Not precipitating sub-class
+  int PRY = 2;       // Is precipitating sub-class
+  int DN1 = 0; // !First index of downward classes
+  int QUI       = 1; // Quiescent class
+  int UP1       = 2; // First index for upward classes
+  nupdraft = 1;
+  ndndraft = 1;
+  int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
+  int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
+  int NCLASS_CL = ncc_in; // Number of cloud classes
+  int NCLASS_PR = nprcp_in; // Number of precipitaion classes
+
+  //int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
+  //int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
+  //NCLASS_CL = ncc_in; // Number of cloud classes
+  //NCLASS_PR = nprcp_in; // Number of precipitaion classes
+  //coupler.set_option<int>("ecpp_NCLASS_CL",NCLASS_CL);
+  //coupler.set_option<int>("ecpp_NCLASS_PR",NCLASS_PR);
+  //coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
   printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
   printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
+  printf("%s %d\n", "Liran check crm_count:", crm_count);
   printf("Liran check start ECPP stage2:\n");
   printf("\nValue of ndraft_max 2: %d: ", ndraft_max);
-  printf("\nValue of NCLASS_CL 2: %d: ", NCLASS_CL);
-  printf("\nValue of NCLASS_PR 2: %d: ", NCLASS_PR);
+  //printf("\nValue of NCLASS_CL 2: %d: ", NCLASS_CL);
+  //printf("\nValue of NCLASS_PR 2: %d: ", NCLASS_PR);
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
   auto crm_cnt                  = dm_device.get<int,1>("crm_cnt");
@@ -426,11 +452,19 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto updrafttop               = dm_device.get<real,1>("updrafttop");
   auto dndrafttop               = dm_device.get<real,1>("dndrafttop");
   auto dndraftbase              = dm_device.get<real,1>("dndraftbase");
-
+  auto cldfrac                  = dm_device.get<real,4>( "cldfrac");
   //------------------------------------------------------------------------------------------------
   // Define variables used by subroutine categorization_stats
-  real7d mask_bnd("mask_bnd",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
-  real7d mask_cen("mask_cen",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
+  real7d mask_bnd("mask_bnd",nzi,ny,nx,nens,2,ndraft_max,2);
+  real7d mask_cen("mask_cen",nzi,ny,nx,nens,2,ndraft_max,2);
+  real5d area_cen_final("area_cen_final",nz,nens,2,ndraft_max,2);
+  real5d area_bnd_final("area_bnd_final",nz,nens,2,ndraft_max,2);
+  real5d area_cen_sum("area_cen_sum",nz,nens,2,ndraft_max,2);
+  real5d qcloud_cen_sum("qcloud_cen_sum",nz,nens,2,ndraft_max,2);
+  real5d qrain_cen_sum("qrain_cen_sum",nz,nens,2,ndraft_max,2);
+  real5d qice_cen_sum("qice_cen_sum",nz,nens,2,ndraft_max,2);
+  real2d wwqui_bar_cen("wwqui_bar_cen",nz,nens);
+  real2d wwqui_cloudy_bar_cen("wwqui_cloudy_bar_cen",nz,nens);
   real4d cloudmixr("cloudmixr",nz,ny,nx,nens);
   real4d cloudmixr_total("cloudmixr_total",nz,ny,nx,nens);
   real4d precmixr_total("precmixr_total",nz,ny,nx,nens);
@@ -448,6 +482,19 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   real2d tmpvecb("rhoair",nz,nens);
   real2d wup_thresh("wup_thresh",nz,nens);
   real2d wdown_thresh("wdown_thresh",nz,nens);
+  real2d thresh_factorbb_up("thresh_factorbb_up",nz,nens);
+  real2d thresh_factorbb_down("thresh_factorbb_down",nz,nens);
+  int2d maskup("maskup", nzi, nupdraft);
+  int2d maskdn("maskdn", nzi, nupdraft);
+  int1d maskqu("maskqu", nzi);
+  int1d maskcld("maskcld", nzi);
+  int1d maskclr("maskclr", nzi);
+  int1d maskcld_bnd("maskcld_bnd", nzi);
+  int1d maskclr_bnd("maskclr_bnd", nzi);
+  int1d maskpry("maskpry", nzi);
+  int1d maskprn("maskprn", nzi);
+  int1d maskpry_bnd("maskpry_bnd", nzi);
+  int1d maskprn_bnd("maskprn_bnd", nzi);
 
   real upthresh = 1.0;
   real downthresh = 1.0;
@@ -455,6 +502,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   real downthresh2 = 0.5;
   real cloudthresh = 1e-6;
   real prcpthresh = 1e-6;
+
   // mhwang
   // high thresholds are used to classify transport classes (following Xu et al., 2002, Q.J.R.M.S.
   real cloudthresh_trans = 1e-5; //Cloud mixing ratio beyond which cell is "cloudy" to classify transport classes (kg/kg)   +++mhwang
@@ -465,11 +513,16 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   int ijdel_downaa = 0;
   int ijdel_upbb   = 0;
   int ijdel_downbb = 0;
+  int temp0        = 0;
+  int temp1        = 0;
+
 
   //------------------------------------------------------------------------------------------------
   parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
     crm_cnt(iens) = crm_cnt(iens) + 1;
   });
+  crm_count = crm_count+2;
+  coupler.set_option<int>("crm_count",crm_count);
   runcount = crm_cnt(0);
   printf("%s %d\n", "Liran check runcount:", runcount);
   // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
@@ -478,12 +531,15 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   printf("Liran check start ecpp_crm_stat 00\n");
   // Ensure ntavg2_ss is a multiple of ntavg1_ss
   ecpp_ntavg1_ss = (int)(ecpp_ntavg2_ss / (ecpp_ntavg2_ss / ecpp_ntavg1_ss));
-  ntavg1 = (int)(ecpp_ntavg1_ss / crm_dt);
-  ntavg2 = (int)(ecpp_ntavg2_ss / crm_dt);
-  printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss 00:", ecpp_ntavg1_ss);
-  printf("%s %.2f\n", "Liran check crm_dt 00:", crm_dt);
-  printf("%s %.2f\n", "Liran check ecpp_ntavg1_ss / crm_dt)", (ecpp_ntavg1_ss / crm_dt));
-  printf("%s %.2f\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", (int)(ecpp_ntavg1_ss / crm_dt));
+  temp0 = (int)(ecpp_ntavg1_ss);
+  temp1 = (int)(crm_dt);
+  ntavg1 = temp0/temp1;
+  temp0 = (int)(ecpp_ntavg2_ss);
+  ntavg2 =  temp0/ temp1;
+  printf("%s %d\n", "Liran check ecpp_ntavg1_ss 00:", temp0);
+  printf("%s %d\n", "Liran check crm_dt 00:", temp1);
+  printf("%s %d\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", temp0/temp1);
+  printf("%s %d\n", "Liran check ntavg1", ntavg1);
 
   // Set level-1 and level-2 averaging periods for ECPP
   
@@ -512,29 +568,13 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     qvs(k,j,i,icrm) = .622*EVS/(ref_pres(icrm,k)*100.-EVS); //  ! pres(icrm,kk) with unit of hPa
     alt(k,j,i,icrm) =  287.0*crm_temp(k,j,i,icrm)/(100.*ref_pres(icrm,k));
     yakl::atomicAdd(altsum1(k,j,i,icrm) , alt(k,j,i,icrm));
-    yakl::atomicAdd(liran_test4d(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
+    yakl::atomicAdd(liran_test4davg(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
     yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
     yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
     yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
     yakl::atomicAdd(prainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
     yakl::atomicAdd(qsnowsum1(k,j,i,icrm) , qsnowsum1(k,j,i,icrm)); // This is ZERO!! for now
     yakl::atomicAdd(ecppwwsum1(k,j,i,icrm) , crm_wvel(k,j,i,icrm));
-    
-
-/*
-    yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
-    yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
-    yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
-    yakl::atomicAdd(liran_test4d(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
-    yakl::atomicAdd(ecppwwsum1(k,j,i,icrm) , ecppwwsum1(k,j,i,icrm));
-    yakl::atomicAdd(ecppwwsqsum1(k,j,i,icrm) , ecppwwsqsum1(k,j,i,icrm));
-    yakl::atomicAdd(rhsum1(k,j,i,icrm) , rhsum1(k,j,i,icrm));
-    yakl::atomicAdd(cf3dsum1(k,j,i,icrm) , cf3dsum1(k,j,i,icrm));
-    yakl::atomicAdd(tkesgssum1(k,j,i,icrm) , tkesgssum1(k,j,i,icrm));
-    yakl::atomicAdd(qvssum1(k,j,i,icrm) , qvssum1(k,j,i,icrm));
-    yakl::atomicAdd(prainsum1(k,j,i,icrm) , prainsum1(k,j,i,icrm));
-    yakl::atomicAdd(precallsum1(k,j,i,icrm) , precallsum1(k,j,i,icrm));
-    */
 });
 
 /*
@@ -548,25 +588,25 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
       qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
 
 */
-printf("%s %.2f\n", "Liran check liran_test4d:", liran_test4d(10,10,10,10));
-if (ntavg1 != 0 && runcount % ntavg1 == 0) {
+printf("%s %.2f\n", "Liran check liran_test4davg:", liran_test4davg(10,10,10,10));
+
+if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
+  printf("%s %.2f\n", "Liran check liran_test4davg average start:", liran_test4davg(10,10,10,10));
   parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
-    if (ntavg1 != 0 && crm_cnt(icrm) % ntavg1 == 0) {
         // itavg1 is divisible by ntavg1
-      printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
-      liran_test4d(k,j,i,icrm) = liran_test4d(k,j,i,icrm)/ntavg1;
-      qcloudsum1(k,j,i,icrm)   = qcloudsum1(k,j,i,icrm)  /ntavg1;
+      //printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
+      real temp = 0.0;
+      liran_test4davg(k,j,i,icrm) = liran_test4davg(k,j,i,icrm)/ntavg1;
+      qcloudsum1(k,j,i,icrm)    = qcloudsum1(k,j,i,icrm)  /ntavg1;
       qrainsum1(k,j,i,icrm)    = qrainsum1(k,j,i,icrm)   /ntavg1;
       qicesum1(k,j,i,icrm)     = qicesum1(k,j,i,icrm)    /ntavg1;
-      qsnowsum1(k,j,i,icrm)    = qsnowsum1(k,j,i,icrm)   /ntavg1;
+      qsnowsum1(k,j,i,icrm)   = qsnowsum1(k,j,i,icrm)   /ntavg1;
       altsum1(k,j,i,icrm)      = altsum1(k,j,i,icrm)     /ntavg1;
       ecppwwsum1(k,j,i,icrm)   = ecppwwsum1(k,j,i,icrm)  /ntavg1;
-      printf("%s %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
-    } else {
-        // itavg1 is not divisible by ntavg1
-      printf("%s %d\n", "\nitavg1 is not divisible by ntavg1", crm_cnt(icrm));
-    }
+      //printf("%s %d %d %d %d %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),k,j,i,icrm,liran_test4d(k,j,i,icrm));
   });
+  printf("%s %.2f\n", "Liran check liran_test4davg average end:", liran_test4davg(10,10,10,10));
+  printf("Liran check categorization_stats\n");
   //printf("%s %d\n", "Liran check itavg1 div ntavg1:", itavg1 % ntavg1);
   // Check if we have reached the end of the level 1 time averaging period.
 
@@ -582,7 +622,7 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
   because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
   Minghuai Wang, 2010-04
   */
-  printf("Liran check categorization_stats\n");
+  
   parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     YAKL_LAMBDA (int k, int j, int i, int icrm) {
       cloudmixr(k,j,i,icrm) = qcloudsum1(k,j,i,icrm);
@@ -590,6 +630,7 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
       // total hydrometer (rain, snow, and graupel)
       precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
   });
+
   int nxy = nx*ny;
   parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
     for (int k_gcm=0; k_gcm<nzi; k_gcm++) {
@@ -613,7 +654,7 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
   });
 
   printf("Liran check categorization_stats 2\n");
-   //------------------------------------------------------------------------------------------------
+  //------------------------------------------------------------------------------------------------
     //parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
       //crm_cnt(iens) = crm_cnt(iens) + 1;
     //});
@@ -647,9 +688,7 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
       ! and similar for cloudtop_upbb, cloudtop_downaa/bb
       ! (assume periodic BC here)
   */
-
   printf("Liran check determine_transport_thresh 1\n");
-
   // if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then This is ignored
   int ijdel = std::max({ijdel_upaa, ijdel_upbb, ijdel_downaa, ijdel_downbb});
 
@@ -719,6 +758,7 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
     }
 
   });
+  printf("\nLiran check start ECPP ecpp_crm_stat 02\n");
 
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     if (nup(icrm) > 0.0) {
@@ -791,13 +831,16 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
     tmpvecb(k_crm,icrm) = wdown_rms_k(k_crm,icrm);
   });
 
-
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     for (int k_crm=1; k_crm<nz; k_crm++) {
       wup_rms_ksmo(k_crm,icrm) = 0.0;
       wdown_rms_ksmo(k_crm,icrm) = 0.0;
       real tmpsuma = 0.0;
-      for (int k_crm2=k_crm-1; k_crm<=k_crm+1; k_crm++) {
+      int kmin = 0;
+      kmin = std::max(k_crm-1, 1);
+      int kmax = 0;
+      kmax = std::min(k_crm+1, nz);
+      for (int k_crm2=kmin; k_crm<=kmax; k_crm++) {
         wup_rms_ksmo(k_crm,icrm) = wup_rms_ksmo(k_crm,icrm) + tmpveca(k_crm2,icrm);
         wdown_rms_ksmo(k_crm,icrm) = wdown_rms_ksmo(k_crm,icrm) + tmpvecb(k_crm2,icrm);
         tmpsuma = tmpsuma + 1.0;
@@ -865,27 +908,576 @@ if (ntavg1 != 0 && runcount % ntavg1 == 0) {
         tmpw = std::max( tmpw, wup_rms(icrm) );
       }
       tmpw = std::max( tmpw, tmpw_minval );
-      wdown_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
-      wdown_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
+      wdown_thresh_k(k_crm,0,icrm) = -tmpw*std::abs(downthresh);
+      wdown_thresh_k(k_crm,1,icrm) = -tmpw*std::abs(downthresh2);
     }
 
   });
 
+  // End of call determine_transport_thresh
+
+  // Starting line 608
   parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
     wdown_thresh(k_crm,icrm) = wdown_thresh_k(k_crm,0,icrm);
     wup_thresh(k_crm,icrm) = wup_thresh_k(k_crm,0,icrm);
   });
 
+  parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
+    thresh_factorbb_up(k_crm,icrm) = 1.0;
+    thresh_factorbb_down(k_crm,icrm) = 1.0;
+  });
+  
+  
+
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    bool thresh_calc_not_done = true;
+    int iter = 0;
+    int nzstag = nz + 1;
+
+    while (thresh_calc_not_done) {
+      iter = iter + 1;
+    
+      for (int k_crm = 1; k_crm <= nzstag; ++k_crm) {
+          real tmpa, tmpb;
+          if (k_crm == 1) {
+              tmpa = thresh_factorbb_up(k_crm,icrm); 
+              tmpb = thresh_factorbb_down(k_crm,icrm);
+          } else if (k_crm == nzstag) {
+              tmpa = thresh_factorbb_up(k_crm-1,icrm); 
+              tmpb = thresh_factorbb_down(k_crm-1,icrm);
+          } else {
+              tmpa = std::max(thresh_factorbb_up(k_crm-1,icrm), thresh_factorbb_up(k_crm,icrm));
+              tmpb = std::max(thresh_factorbb_down(k_crm-1,icrm), thresh_factorbb_down(k_crm,icrm));
+          } // end of if (k_crm == 1) 
+          wup_thresh_k(k_crm,0,icrm) = wup_thresh_k(k_crm,0,icrm)*tmpa;
+          wup_thresh_k(k_crm,1,icrm) = wup_thresh_k(k_crm,1,icrm)*tmpa;
+          wdown_thresh_k(k_crm,0,icrm) = wdown_thresh_k(k_crm,0,icrm)*tmpb;
+          wdown_thresh_k(k_crm,1,icrm) = wdown_thresh_k(k_crm,1,icrm)*tmpb;
+      } // end of for (int k_crm = 1; k_crm <= nzstag; ++k_crm)
+
+
+      for (int k_crm = 0; k_crm <= std::max(1, kup_top(icrm)-1); ++k_crm) {
+        wup_thresh(k_crm,icrm) = wup_thresh_k(k_crm,0,icrm);
+      }
+      for (int k_crm = 0; k_crm <= std::max(1, kup_top(icrm)-1); ++k_crm) {
+        wdown_thresh(k_crm,icrm) = wdown_thresh_k(k_crm,0,icrm);
+      }
+
+      /*
+      !
+      !  fix a bug in the WRF_ECPP, Minghuai Wang, 2009-12.
+      !  set wdown_thresh_k and wup_thresh_k to be an extreme value
+      !  above updraft (kup_top) and downdraft top(kdown_top).
+      !  This will make sure there is no updraft or downdraft above kup_top and kdown_top
+      !
+      */
+
+      real wlarge = 1.0e10;   // m/s
+
+      for (int k_crm = kup_top(icrm); k_crm <= nz+1; ++k_crm) {
+          wup_thresh_k(k_crm, 0,icrm) = wlarge;
+          wup_thresh_k(k_crm, 1,icrm) = wlarge;
+      }
+      for (int k_crm = kdown_top(icrm); k_crm <= nz+1; ++k_crm) {
+          wdown_thresh_k(k_crm, 0,icrm) =  -1. * wlarge;
+          wdown_thresh_k(k_crm, 1,icrm) =  -1. * wlarge;
+      }
+
+
+  /*
+  subroutine setup_class_masks( &
+      nx, ny, nz, nupdraft, ndndraft, ndraft_max, &
+      cloudmixr, cf3d, precall, ww, &
+      wdown_thresh_k, wup_thresh_k, &
+      cloudthresh, prcpthresh, &
+      mask_bnd, mask_cen,  &
+      cloudmixr_total, cloudthresh_trans, precthresh_trans, &
+      qvs, precmixr_total )
+      !
+      ! Sets up the masks used for determining quiescent/up/down, clear/cloudy,
+      ! and non-precipitatin/precipitating classes.
+      !
+      ! William.Gustafosn@pnl.gov; 20-Nov-2008
+      ! Last modified: William.Gustafson@pnl.gov; 16-Apr-2009
+
+      ! Modification by Minghuai Wang (Minghuai.Wang@pnl.gov), April 23, 2010
+      ! use total condensate (liquid+ice),  different condensate and precipitating thresholds
+      ! to classify transport classes.
+      ! See Xu et al., 2002, Q.J.R.M.S.
+      !
+  */
+
+
+  /*
+      ! Initialize the masks to zero and then we will accumulate values into
+      ! them as we identify the various classes.
+  */
+
+      real cloudthresh_trans_temp=0.0;
+      real precthresh_trans_temp=0.0;
+      int itr;
+      int ipr;
+      int icl;
+      // Loop over the horizontal dimensions...
+      for (int i=0; i<=nx; i++) {
+        for (int j=0; j<=ny; j++) {
+        // Set initial mask values for the vertical cell boundaries...
+        /*
+        int maskqu = 0;
+        int maskcld = 0;
+        int maskclr = 0;
+        int maskcld_bnd = 0;
+        int maskclr_bnd = 0;
+        int maskpry = 0;
+        int maskprn = 0;
+        int maskpry_bnd = 0;
+        int maskprn_bnd = 0;  
+        */
+
+          for (int k=0; k<=nzstag; k++) {
+            maskup(k,0) =  0;
+            maskdn(k,0) =  0;
+            maskqu(k) =  0;
+            maskcld(k) =  0;
+            maskclr(k) =  0;
+            maskcld_bnd(k) =  0;
+            maskclr_bnd(k) =  0;
+            maskpry(k) =  0;
+            maskprn(k) =  0;
+            maskpry_bnd(k) =  0;
+            maskprn_bnd(k) =  0;
+  /*        
+            !Transport upward at cell boundaries...
+            !We have to take into account the possibility of multiple
+            !updraft categories. At this point, we handle only the
+            !cases of one or two categories. We do not yet handle the
+            !allcomb option.
+            !
+            ! updraft only exist in cloudy area or precipitating clear area ++++mhwang
+  */          
+            cloudthresh_trans_temp = cloudthresh_trans;
+            if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
+                (qrloud(std::max(k - 1, 0),j,i,icrm)+ qrloud(std::min(k, nz),j,i,icrm)) * 0.5 > precthresh_trans ||
+               (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz),j,i,icrm)) * 0.5 > precthresh_trans ){
+               // !Only one threshold
+              if (crm_wvel(k,j,i,icrm) > wup_thresh_k(k, 0,icrm)) {
+                  maskup(k,0) = 1;
+              } 
+            } // end of if (((cloudmixr_total(...
+
+/*
+        !Transport downward at cell boundaries...
+        !
+        ! downdraft only exist in cloudy area or precipitating clear area   +++mhwang
+*/
+            if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
+                (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz),j,i,icrm)) * 0.5 > precthresh_trans ){
+               // !Only one threshold
+              if (crm_wvel(k,j,i,icrm) < wdown_thresh_k(k, 0,icrm)) {
+                  maskdn(k,0) = 1;
+              } 
+            } // end of if (((cloudmixr_total(...
+/*
+      !Transport quiescent at cell boundaries if neither up or
+      !down triggered...
+*/
+            if ( maskup(k,0) + maskdn(k,0) < 1 ){
+              maskqu(k) = 1;
+            } 
+
+            // Cloudy or clear at cell boundaries...
+            if ((cloudmixr(std::max(k - 1, 0), j, i, icrm)+cloudmixr(std::min(k, nz), j, i, icrm))*0.5>cloudthresh){
+              maskcld_bnd(k) = 1;
+            } else {
+              maskclr_bnd(k) = 1;
+            }
+
+            // Raining or not at cell boundaries...
+            if ((qrloud(std::max(k - 1, 0), j, i, icrm)+qrloud(std::min(k, nz), j, i, icrm))*0.5>prcpthresh){
+              maskpry_bnd(k) = 1;
+            } else {
+              maskprn_bnd(k) = 1;
+            }
+          } // end of for (int k=0; k<=nzstag; k++) 
+
+          for (int k=0; k<=nz; k++) {
+            // Cloudy or clear at cell centers...
+            if (cloudmixr(k,j,i,icrm)>cloudthresh){
+              maskcld(k) = 1;
+            } else {
+              maskclr(k) = 1;
+            }
+            // Raining or not at cell centers...
+            if (qrloud(k,j,i,icrm)>prcpthresh){
+              maskpry(k) = 1;
+            } else {
+              maskprn(k) = 1;
+            }
+          } // end of for (int k=0; k<=nz; k++) {
+
+/*
+    ! Now, use the initial boundary masks by class to generate a combined
+    ! mask for the cell boundaries.
+*/
+          for (int k=0; k<=nzstag; k++) {
+            // Upward, or at least upward quiescent
+            if (maskup(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)>0)){
+
+              // !Are we are here because of maskup? If so, then we need to
+              // !parse the correct updraft category.
+              if (maskqu(k) < 1){
+                itr = UP1 + maskup(k,0)-1;   
+              } else {
+                itr = QUI;
+              }
+              // For upward motion, determine cloud and precip characteristics
+              // based on the cell-center values below the boundary.
+              if (k==0){
+                icl = CLR;
+                ipr = PRN;
+              } else {
+                // call cloud_prcp_check
+              }
+            // Downward, or at least downward quiescent  
+            } else if (maskdn(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)<0)){  
+            
+              // Are we here because of maskdn? If so, then we need to
+              // parse the correct downdraft category.  
+              if (maskqu(k) < 1){
+                itr = DN1 + maskup(k,0)-1;   
+              } else {
+                itr = QUI;
+              }
+              // For downward motion, determine cloud and precip characteristics
+              // based on the cell-center values above the boundary.
+              if( k==nzstag ) {
+                icl = CLR;
+                ipr = PRN;
+              }else{
+                // call cloud_prcp_check
+              }
+            // Quiescent with w=0. Use the cell-center values averaged
+            // surrounding the boundary for the cloud/prcp states.  
+            } else {
+              itr = QUI;
+              // call cloud_prcp_check
+            } // end of if (maskup(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)>0))
+/*
+! +++mhwang
+    ! Total condensate and different thresholds are used to classify transport classes. So the following change
+    ! is not needed anymore. Minghuai Wang, 2010-04-23.
+    !
+    ! In the clear, and non-precipitating class, it is classified as quiescent class in the MMF simulation.
+    ! If this is classed as updraft or downdraft in mode 16, this would lead to too much upraft and downdraft mass fluxes.
+    ! Minghuai Wang, 2010-01-18 (Minghuai.Wang@pnl.gov)
+    !           if(icl.eq.CLR .and. ipr.eq.PRN) then
+    !             itr = QUI
+    !           end if
+    !---mhwang
+
+    !We have all the class indices determined so now we can set
+    !the correct mask location to 1.
+    !           mask_bnd(i,j,k,icl,itr,ipr) = 1.
+    ! use fractioal cloudiness in SAM
+*/
+            if( icl==CLR ) {
+              mask_bnd(k,j,i,icrm,icl,itr,ipr) = 1;
+            }else if (icl==CLD){
+              mask_bnd(k,j,i,icrm,CLD,itr,ipr) = (cldfrac(std::max(k - 1, 0), j, i, icrm) + cldfrac(std::min(k, nz), j, i, icrm)) * 0.5; 
+              mask_bnd(k,j,i,icrm,CLR,itr,ipr) = 1.0 - (cldfrac(std::max(k - 1, 0), j, i, icrm) + cldfrac(std::min(k, nz), j, i, icrm)) * 0.5; 
+            }
+
+          } // end of for (int k=0; k<=nzstag; k++)
+/*
+  ! Now, use the initial boundary masks by class to generate a combined
+  ! mask for the cell centers. We determine the transport class based on
+  ! splitting the cell conceptually in half with the upper boundary
+  ! influencing the top half of the cell and the bottom boundary the bottom
+  ! half. Each contributes either 0 or 0.5 of the total contribution of the
+  ! cell's transport. e.g. if both boundaries are upward, then the cell is
+  ! fully an "up" transport cell. If the two boundaries are opposite, then
+  ! the cell is weighted half in each direction for the masking.
+  !
+*/
+          for (int k=0; k<=nz; k++) {
+            // Get the cloud/prcp characteristics at cell center.
+            // call cloud_prcp_check
+
+            // Look at the bottom boundary first and determine it's
+            // contribution to the cell center transport class.
+
+            if (maskup(k,0)>0){
+              itr = UP1 + maskup(k,0)-1; 
+            } else if (maskdn(k,0)>0){  
+              itr = DN1 + maskdn(k,0)-1;   
+            } else if (maskqu(k) > 0){
+              itr = QUI;
+            } else {
+              // call stop
+            }
+/*
+    ! +++mhwang
+    ! ! Total condensate and different thresholds are used to classify transport classes. So the following change
+    ! is not needed anymore. Minghuai Wang, 2010-04-23.
+
+    ! In the clear, and non-precipitating class, it is classified as quiescent class in the MMF simulation.
+    ! If this is classed as updraft or downdraft in mode 16, this would lead to too much upraft and downdraft mass fluxes.
+    ! Minghuai Wang, 2010-01-18 (Minghuai.Wang@pnl.gov)
+    !           if(icl.eq.CLR .and. ipr.eq.PRN) then
+    !             itr = QUI
+    !           end if
+    !---mhwang
+
+    !We have what we need for the cell bottom classes so increment
+    !the center mask for the bottom half...
+    !           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+    ! Use fractional cloudiness at SAM
+*/
+            if (icl==CLR){
+              mask_cen(k,j,i,icrm,icl,itr,ipr) =  mask_cen(k,j,i,icrm,icl,itr,ipr) + 0.5; 
+            } else if (icl==CLD){  
+              mask_cen(k,j,i,icrm,CLD,itr,ipr) =  mask_cen(k,j,i,icrm,CLD,itr,ipr) + cldfrac(k, j, i, icrm) * 0.5; 
+              mask_cen(k,j,i,icrm,CLR,itr,ipr) =  mask_cen(k,j,i,icrm,CLR,itr,ipr) + (1.0-cldfrac(k, j, i, icrm))*0.5;  
+            }
+
+            // !Next, look at the top boundary and determine it's
+            // !contribution to the cell center transport class.
+            if (maskup(k+1,0)>0){
+              itr = UP1 + maskup(k+1,0)-1; 
+            } else if (maskdn(k+1,0)>0){  
+              itr = DN1 + maskdn(k+1,0)-1;   
+            } else if (maskqu(k+1) > 0){
+              itr = QUI;
+            } else {
+              // call stop
+            }
+/*
+    ! +++mhwang
+    ! In the clear, and non-precipitating class, it is classified as quiescent class in the MMF simulation.
+    ! If this is classed as updraft or downdraft in mode 16, this would lead to too much upraft and downdraft mass fluxes.
+    ! Minghuai Wang, 2010-01-18 (Minghuai.Wang@pnl.gov)
+    !           if(icl.eq.CLR .and. ipr.eq.PRN) then
+    !             itr = QUI
+    !           end if
+    !---mhwang
+
+    !We have what we need for the cell top classes so increment
+    !the center mask for the top half...
+    !           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+    ! use fractional cloudiness in SAM
+*/
+            if (icl==CLR){
+              mask_cen(k,j,i,icrm,icl,itr,ipr) =  mask_cen(k,j,i,icrm,icl,itr,ipr) + 0.5; 
+            } else if (icl==CLD){  
+              mask_cen(k,j,i,icrm,CLD,itr,ipr) =  mask_cen(k,j,i,icrm,CLD,itr,ipr) + cldfrac(k, j, i, icrm) * 0.5; 
+              mask_cen(k,j,i,icrm,CLR,itr,ipr) =  mask_cen(k,j,i,icrm,CLR,itr,ipr) + (1.0-cldfrac(k, j, i, icrm))*0.5;  
+            }
+
+          } // end of for (int k=0; k<=nz; k++) 
+
+        } // end of for (int j=0; y_crm<=ny; y_crm++)
+      } // end of for (int i=0; x_crm<=nx; x_crm++)
+      // Other loops over k, as in the original code
+
+// end of setup_class_masks
+/* ==========================================================================
+      !
+      ! ( code added on 14-dec-2009 to guarantee quiescent class
+      !    area > acen_quiesc_minaa )
+      ! at each level
+      !    calculate total fractional area for quiescent class
+      !       using the current level-1 averages
+      !    if (acen_quiesc < acen_quiesc_minaa), increase the
+      !       thresh_factorbb_up/down(k) by factor of 1.5 or 1.2
+      !    (also, if acen_down > acen_up, increase thresh_factorbb_up by less
+      !
+*/
+
+      real acen_quiesc;
+      real acen_up;
+      real acen_down;
+      real abnd_quiesc;
+      real abnd_up;
+      real abnd_down;
+      real acen_quiesc_minaa;
+
+      thresh_calc_not_done = false;
+      for (int k=0; k<=nz; k++) {
+        for (int j=0; j<=ny; j++) {
+          for (int i=0; i<=nx; i++) {
+            for (int iCL=0; iCL<=NCLASS_CL; iCL++) {
+              for (int iPR=0; iPR<=NCLASS_PR; iPR++) {
+                acen_quiesc = acen_quiesc + mask_cen(k,j,i,icrm,iCL,QUI,iPR);
+                acen_up = acen_up + mask_cen(k,j,i,icrm,iCL,UP1,iPR); 
+                abnd_quiesc = abnd_quiesc + mask_bnd(k,j,i,icrm,iCL,QUI,iPR); 
+                abnd_up = abnd_up + mask_bnd(k,j,i,icrm,iCL,UP1,iPR); 
+              } 
+            }
+          }
+        }
+        acen_quiesc = std::max(acen_quiesc/nxy, 0.0);
+        acen_up = std::max(acen_up/nxy, 0.0);
+        acen_down = std::max(1.0-acen_quiesc-acen_up, 0.0);
+        abnd_quiesc = std::max(abnd_quiesc/nxy, 0.0);
+        abnd_up = std::max(abnd_up/nxy, 0.0);
+        abnd_down = std::max( (1.0 - abnd_quiesc - abnd_up),0.0);
+
+        real tmpa;
+
+        if (std::min(acen_quiesc, abnd_quiesc)<acen_quiesc_minaa){
+          thresh_calc_not_done = true;
+          if (acen_down > acen_up){
+            tmpa = acen_up/acen_down; 
+          } else if (abnd_down > abnd_up){  
+            tmpa = abnd_up/abnd_down;  
+          } else {
+            tmpa = 1.0;
+          }
+
+          if (std::min(acen_quiesc,abnd_quiesc) < 0.5*acen_quiesc_minaa){
+            thresh_factorbb_down(k,icrm) = thresh_factorbb_down(k,icrm)*1.5; 
+            thresh_factorbb_up(k,icrm) = thresh_factorbb_up(k,icrm)*std::max(1.5*tmpa,1.25);
+          } else {
+            thresh_factorbb_down(k,icrm) = thresh_factorbb_down(k,icrm)*1.25;
+            thresh_factorbb_up(k,icrm) = thresh_factorbb_up(k,icrm)*std::max(1.25*tmpa, 1.125);
+          }
+
+          if (iter>5){
+            printf("\nLiran iter greater than 5\n");
+          }
+        }
+      } // end of for (int k=0; k<=nz; k++)
+    } //while (thresh_calc_not_done
+    real mask_tmp;
+    int km0;
+    int km1;
+    for (int j=0; j<=ny; j++) {
+      for (int i=0; i<=nx; i++) {
+        for (int iCL=0; iCL<=NCLASS_CL; iCL++) {
+          for (int iTR=0; iTR<=ndraft_max; iTR++) {
+            for (int iPR=0; iPR<=NCLASS_PR; iPR++) {
+              for (int k=0; k<=nz; k++) {
+                // We now have enough information to aggregate the variables into domain
+                // averages by class. Do this first for the cell centers...
+                mask_tmp = mask_cen(k,j,i,icrm,iCL,iTR,iPR)/nxy;
+                area_cen_final(k,icrm,iCL,iTR,iPR) = area_cen_final(k,icrm,iCL,iTR,iPR) + mask_tmp;
+                area_cen_sum(k,icrm,iCL,iTR,iPR) = area_cen_sum(k,icrm,iCL,iTR,iPR) + mask_tmp;
+                qcloud_cen_sum(k,icrm,iCL,iTR,iPR) = qcloud_cen_sum(k,icrm,iCL,iTR,iPR) + qcloud(k,j,i,icrm)*mask_tmp;
+                qrain_cen_sum(k,icrm,iCL,iTR,iPR) = qrain_cen_sum(k,icrm,iCL,iTR,iPR) + qrloud(k,j,i,icrm)*mask_tmp;
+                qice_cen_sum(k,icrm,iCL,iTR,iPR) = qice_cen_sum(k,icrm,iCL,iTR,iPR) + qiloud(k,j,i,icrm)*mask_tmp;
+                // This list is not complete! 
+                if(iTR==QUI){
+                  wwqui_bar_cen(k,icrm) = wwqui_bar_cen(k,icrm)+(crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5*mask_tmp;
+                  if(iCL==CLD){
+                    wwqui_cloudy_bar_cen(k,icrm)=wwqui_cloudy_bar_cen(k,icrm)+(crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5*mask_tmp;
+                  } // if(icl==CLD)
+                } // if(itr==QUI)
+              } // end of for (int k=0
+              // Now, we can do a similar aggregation for the cell boundaries.
+              for (int k = 1; k <= nzstag; ++k) {
+                mask_tmp = mask_bnd(k,j,i,icrm,iCL,QUI,iPR)/nxy;
+                area_bnd_final(k,icrm,iCL,iTR,iPR) = area_bnd_final(k,icrm,iCL,iTR,iPR) + mask_tmp;
+                // NOTE: technically we should interpolate and not do a simple
+                //       average to get density at the cell interface
+                km0 = std::min(nz,k);
+                km1 = std::max(0,k-1);
+                // calculate the mean vertical velocity over the quiescent class  +++mhwang
+                // wwqui_bar_bnd is used in both all sky and cloudy sky.
+                // when wwqui_cloudy_bar_bnd was used for cloudy sky, wwqui_cloudy_bnd_sum will be smaller 
+                // than wwqui_bnd_sum.
+
+                // This part does not include 
+                // wwqui_cloudy_bnd_sum(k)=wwqui_cloudy_bnd_sum(k)+mask * (ww(i,j,k)-wwqui_bar_bnd(k))**2 + mask * (tkesgs(i,j,km0)+tkesgs(i,j,km1)) * 0.5/3.
+
+              } // end of for (int k = 1; k <= nzstag; ++k)
+            } // end of for (int iPR=0
+          } // end of for (int iND=0
+        } // end of for (int iCL=0
+      } // end of for (int i=0
+    } // end of for (int j=0
+
+    // testing small queiscent fraction +++mhwang
+    real temp_area_cen;
+    for (int k=0; k<=nz; k++) {
+      for (int iCL=0; iCL<=NCLASS_CL; iCL++) {
+        for (int iPR=0; iPR<=NCLASS_PR; iPR++) {
+          temp_area_cen = temp_area_cen + area_cen_final(k,icrm,iCL,0,iPR);
+        }
+      }
+      if (temp_area_cen < 1.0e-3){
+        printf("%s %.2f\n", "ecpp, area_cen_final, quiescent", temp_area_cen);
+      }
+    } // end of for (int k=0
+// ==============================End of call categorization_stats============
+  }); // end of parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) 
+/*
+      ! If we want final area categories based on the last avg1 period in each
+      ! avg2 then we need to zero out the running sum just created for the areas
+      ! if it is not the last block of time in ntavg2
+*/    
+
+    // Done with time level one averages so zero them out for next period.
+    parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
+      liran_test4davg(iz,iy,ix,iens)    = 0;
+      qcloudsum1(iz,iy,ix,iens)    = 0;
+      qrainsum1(iz,iy,ix,iens)     = 0;
+      qicesum1(iz,iy,ix,iens)      = 0;
+      qsnowsum1(iz,iy,ix,iens)     = 0;
+      altsum1(iz,iy,ix,iens)       = 0;
+      ecppwwsum1(iz,iy,ix,iens)    = 0;
+    });
+
+printf("\nLiran check start ECPP ecpp_crm_stat 04\n");
+} // if (runcount >=ntavg1 && runcount % ntavg1 == 0) 
+
+// End of time level one averaging period
+
+// Check if we have reached the end of a level 2 averaging period.
+// Liran: We haven't distinguish level 2 averaging from level 1? 
+//if (runcount >=ntavg2 && runcount % ntavg2 == 0){
+/*
+      ! Turn the running sums into averages. ncnt1 in this case is the number
+      ! of calls to categorization_stats during the level 2 averaging period,
+      ! which increment the bnd/cen arrays.
+*/
+
+
+  //parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+
+  //});
+//} 
+
 }
 
+inline void cloud_prcp_check(const std::vector<int>& mask1, const std::vector<int>& mask2, 
+                      int flag1, int flag2, int k, int& iout, const std::string& msg = "") {
+    /*
+  !------------------------------------------------------------------------  
+  ! Assigns the flag associated with the mask value that is true to the
+  ! output index. The masks are assumed to be 1-D arrays and k is the
+  ! position in the array to check.
+  ! William.Gustafson@pnl.gov; 11-Sep-2008
+  !------------------------------------------------------------------------
+    */
+    int n = mask1.size();
 
-printf("\nLiran check start ECPP ecpp_crm_stat 02\n");
+    // Sanity check
+    if (k < 1 || k > n) {
+        std::cerr << "cloud_prcp_check: k =" << k << " n =" << n << std::endl;
+        throw std::runtime_error("ERROR: k out of bounds in cloud_prcp_check");
+    }
+
+    // Adjust index for 0-based arrays
+    k -= 1;
+
+    // Whichever mask has the value 1 has the associated flag put into iout
+    if (mask1[k] > 0 && mask2[k] < 1) {
+        iout = flag1;
+    } else if (mask2[k] > 0 && mask1[k] < 1) {
+        iout = flag2;
+    } else {
+        std::cerr << "cloud_prcp_check: k =" << k << std::endl;
+        throw std::runtime_error("ERROR: neither mask dominates in cloud_prcp_check");
+    }
 }
-
-
-
-
-
-
-
 

@@ -1619,6 +1619,7 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   use cloud_diagnostics,      only: cloud_diagnostics_calc
   use crm_ecpp_output_module, only: crm_ecpp_output_type
   use camsrfexch,             only: cam_export
+  use shr_sys_mod,            only: shr_sys_flush
 #if defined( ECPP )
    use module_ecpp_ppdriver2, only: parampollu_driver2
    use module_data_ecpp1,     only: dtstep_pp_input
@@ -1749,6 +1750,7 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   !-----------------------------------------------------------------------------
   ! ECPP - Explicit-Cloud Parameterized-Pollutant
   !-----------------------------------------------------------------------------
+  write(iulog,*) 'Liran check begin ECPP',use_ECPP,nstep
 #if defined( ECPP )
   if (use_ECPP) then
 
@@ -1757,13 +1759,16 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
 
     dtstep_pp = dtstep_pp_input
     necpp = dtstep_pp/ztodt
-
-    if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+    write(iulog,*) 'Liran check begin ECPP in',necpp,dtstep_pp,ztodt
+    !if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+    if (nstep.ne.0) then
 
       ! aerosol tendency from droplet activation and mixing
       ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
       ! So only turbulence mixing is done here.
       call t_startf('crmclouds_mixnuc')
+      write(iulog,*) 'Liran check crmclouds_mixnuc_tend start'
+      
       call crmclouds_mixnuc_tend(state, ptend, dtstep_pp,           &
                                  cam_in%cflx, pblh, pbuf,           &
                                  crm_ecpp_output%wwqui_cen,         &
@@ -1772,6 +1777,8 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
                                  crm_ecpp_output%wwqui_cloudy_bnd,  &
                                  species_class)
       call physics_update(state, ptend, dtstep_pp, tend)
+      write(iulog,*) 'Liran check parampollu_driver2 start'
+      call shr_sys_flush(iulog)
       call t_stopf('crmclouds_mixnuc')
 
       ! ECPP interface
@@ -1802,33 +1809,46 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   !-----------------------------------------------------------------------------
   ! Aerosol stuff
   !-----------------------------------------------------------------------------
-  if (l_tracer_aero) then
-    if (use_ECPP) then
-      ! With MMF + ECPP we can skip the conventional aerosol routines
-    else
-      ! Aerosol wet chemistry determines scavenging and transformations.
-      ! This is followed by convective transport of all trace species except
-      ! water vapor and condensate. Scavenging needs to occur prior to
-      ! transport in order to determine interstitial fraction.
+  ! if (l_tracer_aero) then
+  !   if (use_ECPP) then
+  !     ! With MMF + ECPP we can skip the conventional aerosol routines
+  !   else
+  !     ! Aerosol wet chemistry determines scavenging and transformations.
+  !     ! This is followed by convective transport of all trace species except
+  !     ! water vapor and condensate. Scavenging needs to occur prior to
+  !     ! transport in order to determine interstitial fraction.
 
-      ! Without ECPP we should be using prescribed aerosols, so we only
-      ! need to consider the wet deposition and water uptake for radiation
+  !     ! Without ECPP we should be using prescribed aerosols, so we only
+  !     ! need to consider the wet deposition and water uptake for radiation
 
-      ! Aerosol wet removal (including aerosol water uptake)
-      call t_startf('aero_model_wetdep')
-      call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state,  & ! inputs
-              sh_e_ed_ratio, mu, md, du, eu, ed, dp, dsubcld,    &
-              jt, maxg, ideep, lengath, species_class,           &
-              cam_out, pbuf, ptend,                              & ! outputs
-              clear_rh=mmf_clear_rh) ! clear air relative humidity for water uptake
-      call physics_update(state, ptend, ztodt, tend)
-      call t_stopf('aero_model_wetdep')
+  !     ! Temporary workaround for ECPP testing
+  !     mu(:,:) = 0.
+  !     eu(:,:) = 0.
+  !     du(:,:) = 0.
+  !     md(:,:) = 0.
+  !     ed(:,:) = 0.
+  !     dp(:,:) = 0.
+  !     dsubcld (:) = 1      ! layer thickness in mbs (between upper/lower interface).
+  !     jt      (:) = 1      ! layer thickness in mbs between lcl and maxi.    
+  !     maxg    (:) = pver-1 ! top level index of deep cumulus convection.
+  !     ideep   (:) = 1      ! gathered values of maxi.
+  !     lengath = state%ncol
 
-      ! check tracer integrals
-      call check_tracers_chng(state, tracerint, "aero_model_wetdep", nstep, ztodt,  zero_tracers)
+  !     ! Aerosol wet removal (including aerosol water uptake)
+  !     call t_startf('aero_model_wetdep')
+  !     call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state,  & ! inputs
+  !             sh_e_ed_ratio, mu, md, du, eu, ed, dp, dsubcld,    &
+  !             jt, maxg, ideep, lengath, species_class,           &
+  !             cam_out, pbuf, ptend,                              & ! outputs
+  !             clear_rh=mmf_clear_rh) ! clear air relative humidity for water uptake
+  !     call physics_update(state, ptend, ztodt, tend)
+  !     call t_stopf('aero_model_wetdep')
 
-    end if
-  end if ! l_tracer_aero
+  !     ! check tracer integrals
+  !     call check_tracers_chng(state, tracerint, "aero_model_wetdep", nstep, ztodt,  zero_tracers)
+
+  !   end if
+  ! end if ! l_tracer_aero
 
   !-----------------------------------------------------------------------------
   ! Moist physical parameteriztions complete: 

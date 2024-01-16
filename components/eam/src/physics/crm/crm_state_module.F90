@@ -50,6 +50,7 @@ module crm_state_module
 
       ! SHOC quantities that need to persist between CRM calls
       real(crm_rknd), allocatable :: shoc_tk     (:,:,:,:) ! eddy coefficient for momentum [m2/s]
+      real(crm_rknd), allocatable :: shoc_tke    (:,:,:,:) ! turbulent kinetic energy [m2/s2]
       real(crm_rknd), allocatable :: shoc_tkh    (:,:,:,:) ! eddy coefficient for heat     [m2/s]
       real(crm_rknd), allocatable :: shoc_wthv   (:,:,:,:) ! buoyancy flux                 [K m/s]
       real(crm_rknd), allocatable :: shoc_relvar (:,:,:,:) ! relative cloud water variance
@@ -112,11 +113,13 @@ contains
 
          ! SHOC variables
          if (.not. allocated(state%shoc_tk      ))  allocate(state%shoc_tk      (ncrms,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(state%shoc_tke     ))  allocate(state%shoc_tke     (ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(state%shoc_tkh     ))  allocate(state%shoc_tkh     (ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(state%shoc_wthv    ))  allocate(state%shoc_wthv    (ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(state%shoc_relvar  ))  allocate(state%shoc_relvar  (ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(state%shoc_cldfrac ))  allocate(state%shoc_cldfrac (ncrms,crm_nx,crm_ny,crm_nz))
          call prefetch(state%shoc_tk      )
+         call prefetch(state%shoc_tke     )
          call prefetch(state%shoc_tkh     )
          call prefetch(state%shoc_relvar  )
          call prefetch(state%shoc_wthv    )
@@ -154,6 +157,7 @@ contains
 
       ! SHOC variables
       if (allocated(state%shoc_tk      )) deallocate(state%shoc_tk      )
+      if (allocated(state%shoc_tke     )) deallocate(state%shoc_tke     )
       if (allocated(state%shoc_tkh     )) deallocate(state%shoc_tkh     )
       if (allocated(state%shoc_wthv    )) deallocate(state%shoc_wthv    )
       if (allocated(state%shoc_relvar  )) deallocate(state%shoc_relvar  )

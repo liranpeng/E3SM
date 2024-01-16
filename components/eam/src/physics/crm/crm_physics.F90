@@ -69,6 +69,7 @@ module crm_physics
    integer :: crm_q_prev_idx   = -1
 
    integer :: crm_shoc_tk_idx       = -1
+   integer :: crm_shoc_tke_idx       = -1
    integer :: crm_shoc_tkh_idx      = -1
    integer :: crm_shoc_wthv_idx     = -1
    integer :: crm_shoc_relvar_idx   = -1
@@ -252,6 +253,7 @@ subroutine crm_physics_register()
       call pbuf_add_field('CRM_Q_PREV','global', dtype_r8,dims_crm_3D,crm_q_prev_idx)
       if (prog_modal_aero) call pbuf_add_field('RATE1_CW2PR_ST','physpkg',dtype_r8,dims_gcm_2D,idx)
       call pbuf_add_field('CRM_SHOC_TK'     ,'global', dtype_r8,dims_crm_3D,crm_shoc_tk_idx)
+      call pbuf_add_field('CRM_SHOC_TKE'    ,'global', dtype_r8,dims_crm_3D,crm_shoc_tke_idx)
       call pbuf_add_field('CRM_SHOC_THH'    ,'global', dtype_r8,dims_crm_3D,crm_shoc_tkh_idx)
       call pbuf_add_field('CRM_SHOC_WTHV'   ,'global', dtype_r8,dims_crm_3D,crm_shoc_wthv_idx)
       call pbuf_add_field('CRM_SHOC_RELVAR' ,'global', dtype_r8,dims_crm_3D,crm_shoc_relvar_idx)
@@ -574,7 +576,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
    integer lchnk                                   ! chunk identifier
    integer ncol                                    ! number of atmospheric columns
    integer nstep                                   ! time steps
-
+   integer nzero
    type(physics_buffer_desc), pointer :: pbuf_chunk(:) ! temporary pbuf pointer for single chunk
 
    ! convective precipitation variables on pbuf
@@ -699,6 +701,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
    real(crm_rknd), pointer :: crm_q_prev(:,:,:,:)  ! p3 previous qv
    real(crm_rknd), pointer :: crm_t_prev(:,:,:,:)  ! p3 previous t 
    real(crm_rknd), pointer :: crm_shoc_tk(:,:,:,:)      ! SHOC Eddy coefficient for momentum [m2/s]
+   real(crm_rknd), pointer :: crm_shoc_tke(:,:,:,:)  
    real(crm_rknd), pointer :: crm_shoc_tkh(:,:,:,:)     ! SHOC Eddy coefficent for heat [m2/s]
    real(crm_rknd), pointer :: crm_shoc_wthv(:,:,:,:)    ! SHOC Buoyancy flux [K m/s]
    real(crm_rknd), pointer :: crm_shoc_relvar(:,:,:,:)  ! SHOC Relative cloud water variance
@@ -855,6 +858,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
             call pbuf_get_field(pbuf_chunk, crm_t_prev_idx, crm_t_prev)
             call pbuf_get_field(pbuf_chunk, crm_q_prev_idx, crm_q_prev)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tk_idx     , crm_shoc_tk)
+            call pbuf_get_field(pbuf_chunk, crm_shoc_tke_idx    , crm_shoc_tke)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tkh_idx    , crm_shoc_tkh)
             call pbuf_get_field(pbuf_chunk, crm_shoc_wthv_idx   , crm_shoc_wthv)
             call pbuf_get_field(pbuf_chunk, crm_shoc_relvar_idx , crm_shoc_relvar)
@@ -911,6 +915,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
                   crm_t_prev(i,:,:,k) = state(c)%t(i,m)
                   crm_q_prev(i,:,:,k) = state(c)%q(i,m,1)
                   crm_shoc_tk     (i,:,:,k) = 0.0_r8
+                  crm_shoc_tke    (i,:,:,k) = 0.0_r8
                   crm_shoc_tkh    (i,:,:,k) = 0.0_r8
                   crm_shoc_wthv   (i,:,:,k) = 0.0_r8
                   crm_shoc_relvar (i,:,:,k) = 0.0_r8
@@ -1017,6 +1022,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
             call pbuf_get_field(pbuf_chunk, crm_t_prev_idx, crm_t_prev)
             call pbuf_get_field(pbuf_chunk, crm_q_prev_idx, crm_q_prev)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tk_idx     , crm_shoc_tk)
+            call pbuf_get_field(pbuf_chunk, crm_shoc_tke_idx    , crm_shoc_tke)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tkh_idx    , crm_shoc_tkh)
             call pbuf_get_field(pbuf_chunk, crm_shoc_wthv_idx   , crm_shoc_wthv)
             call pbuf_get_field(pbuf_chunk, crm_shoc_relvar_idx , crm_shoc_relvar)
@@ -1048,6 +1054,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
                crm_state%t_prev  (icrm,:,:,:) = crm_t_prev(i,:,:,:)
                crm_state%q_prev  (icrm,:,:,:) = crm_q_prev(i,:,:,:)
                crm_state%shoc_tk     (icrm,:,:,:) = crm_shoc_tk     (i,:,:,:)
+               crm_state%shoc_tke    (icrm,:,:,:) = crm_shoc_tke    (i,:,:,:)
                crm_state%shoc_tkh    (icrm,:,:,:) = crm_shoc_tkh    (i,:,:,:)
                crm_state%shoc_wthv   (icrm,:,:,:) = crm_shoc_wthv   (i,:,:,:)
                crm_state%shoc_relvar (icrm,:,:,:) = crm_shoc_relvar (i,:,:,:)
@@ -1185,22 +1192,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
          !------------------------------------------------------------------------------------------
          ! Set aerosol
          !------------------------------------------------------------------------------------------
-#if defined(MODAL_AERO)
-         phase = 1  ! interstital aerosols only
-         do i = 1,ncol
-            icrm = ncol_sum + i
-            air_density(i,1:pver) = state(c)%pmid(i,1:pver) / (287.15*state(c)%t(i,1:pver))
-            do k = 1, pver
-               do m = 1, ntot_amode
-                 call loadaer( state(c), pbuf_chunk, i, i, k, m, air_density, phase, &
-                               aerosol_num, aerosol_vol, aerosol_hygro)
-                 crm_input%naermod (icrm,k,m) = aerosol_num(i)
-                 crm_input%vaerosol(icrm,k,m) = aerosol_vol(i)
-                 crm_input%hygro   (icrm,k,m) = aerosol_hygro(i)
-               end do    
-            end do
-         end do
-#endif
+! #if defined(MODAL_AERO)
+!          phase = 1  ! interstital aerosols only
+!          do i = 1,ncol
+!             icrm = ncol_sum + i
+!             air_density(i,1:pver) = state(c)%pmid(i,1:pver) / (287.15*state(c)%t(i,1:pver))
+!             do k = 1, pver
+!                do m = 1, ntot_amode
+!                  call loadaer( state(c), pbuf_chunk, i, i, k, m, air_density, phase, &
+!                                aerosol_num, aerosol_vol, aerosol_hygro)
+!                  crm_input%naermod (icrm,k,m) = aerosol_num(i)
+!                  crm_input%vaerosol(icrm,k,m) = aerosol_vol(i)
+!                  crm_input%hygro   (icrm,k,m) = aerosol_hygro(i)
+!                end do    
+!             end do
+!          end do
+! #endif
          !------------------------------------------------------------------------------------------
          !------------------------------------------------------------------------------------------
 
@@ -1329,6 +1336,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
 
       ! SHOC variables
       call pam_mirror_array_readwrite( 'state_shoc_tk',      crm_state%shoc_tk       )
+      call pam_mirror_array_readwrite( 'state_shoc_tke',     crm_state%shoc_tke      )
       call pam_mirror_array_readwrite( 'state_shoc_tkh',     crm_state%shoc_tkh      )
       call pam_mirror_array_readwrite( 'state_shoc_wthv',    crm_state%shoc_wthv )
       call pam_mirror_array_readwrite( 'state_shoc_relvar',  crm_state%shoc_relvar   )
@@ -1433,11 +1441,31 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_mirror_array_readwrite( 'output_dqi_sponge', crm_output%dqi_sponge,   '' )
       call pam_mirror_array_readwrite( 'output_dqr_sponge', crm_output%dqr_sponge,   '' )
 
-      call pam_mirror_array_readonly( 'global_column_id', gcolp )
+      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cen'       , crm_ecpp_output%wwqui_cen       ,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_cen', crm_ecpp_output%wwqui_cloudy_cen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_bnd'       , crm_ecpp_output%wwqui_bnd       ,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_bnd', crm_ecpp_output%wwqui_cloudy_bnd,   '' )
+      
+      call pam_mirror_array_readwrite( 'ecpp_output_acen', crm_ecpp_output%acen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_abnd', crm_ecpp_output%abnd,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_acen_tf', crm_ecpp_output%acen_tf,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_abnd_tf', crm_ecpp_output%abnd_tf,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_massflxbnd', crm_ecpp_output%massflxbnd,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_rhcen', crm_ecpp_output%rhcen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_qcloudcen', crm_ecpp_output%qcloudcen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_qlsinkcen', crm_ecpp_output%qlsinkcen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_precrcen', crm_ecpp_output%precrcen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_precsolidcen', crm_ecpp_output%precsolidcen,   '' )
+      call pam_mirror_array_readwrite( 'ecpp_output_tbeg', crm_ecpp_output%tbeg,   '' )
 
+
+
+      call pam_mirror_array_readonly( 'global_column_id', gcolp )
+      nzero = 0
       call pam_set_option('ncrms', ncrms )
       call pam_set_option('gcm_nlev', pver )
       call pam_set_option('crm_nz',crm_nz )
+      call pam_set_option('crm_nzi',crm_nz+1 )
       call pam_set_option('crm_nx',crm_nx )
       call pam_set_option('crm_ny',crm_ny )
       call pam_set_option('rad_nx',crm_nx_rad)
@@ -1445,7 +1473,18 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('crm_dx',crm_dx )
       call pam_set_option('crm_dy',crm_dy )
       call pam_set_option('gcm_dt',ztodt )
+      call pam_set_option('crm_count',1 )
       call pam_set_option('crm_dt',crm_dt )
+      call pam_set_option('mode_updnthresh',16 )
+      call pam_set_option('plumetype',1 )
+      
+      call pam_set_option('ecpp_itavg2',nzero )
+      call pam_set_option('ecpp_ntavg1',nzero)
+      call pam_set_option('ecpp_ntavg2',nzero )
+
+      call pam_set_option('ecpp_NCLASS_CL',nzero )
+      call pam_set_option('ecpp_ndraft_max',nzero )
+      call pam_set_option('ecpp_NCLASS_PR',nzero )
 
       call pam_register_dimension('gcm_lev',pver)
 
@@ -1749,6 +1788,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
             call pbuf_get_field(pbuf_chunk, crm_t_prev_idx, crm_t_prev)
             call pbuf_get_field(pbuf_chunk, crm_q_prev_idx, crm_q_prev)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tk_idx     , crm_shoc_tk)
+            call pbuf_get_field(pbuf_chunk, crm_shoc_tke_idx    , crm_shoc_tke)
             call pbuf_get_field(pbuf_chunk, crm_shoc_tkh_idx    , crm_shoc_tkh)
             call pbuf_get_field(pbuf_chunk, crm_shoc_wthv_idx   , crm_shoc_wthv)
             call pbuf_get_field(pbuf_chunk, crm_shoc_relvar_idx , crm_shoc_relvar)
@@ -1779,6 +1819,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
                crm_t_prev(i,:,:,:) = crm_state%t_prev(icrm,:,:,:)
                crm_q_prev(i,:,:,:) = crm_state%q_prev(icrm,:,:,:)
                crm_shoc_tk     (i,:,:,:) = crm_state%shoc_tk     (icrm,:,:,:)
+               crm_shoc_tke    (i,:,:,:) = crm_state%shoc_tke    (icrm,:,:,:)
                crm_shoc_tkh    (i,:,:,:) = crm_state%shoc_tkh    (icrm,:,:,:)
                crm_shoc_wthv   (i,:,:,:) = crm_state%shoc_wthv   (icrm,:,:,:)
                crm_shoc_relvar (i,:,:,:) = crm_state%shoc_relvar (icrm,:,:,:)

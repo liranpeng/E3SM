@@ -13,7 +13,7 @@ module crm_output_module
       real(crm_rknd), allocatable :: qci(:,:,:,:)
       real(crm_rknd), allocatable :: qpl(:,:,:,:)
       real(crm_rknd), allocatable :: qpi(:,:,:,:)
-
+      real(crm_rknd), allocatable :: tke(:,:,:,:)
       real(crm_rknd), allocatable :: tk (:,:,:,:)
       real(crm_rknd), allocatable :: tkh(:,:,:,:)
       real(crm_rknd), allocatable :: prec_crm(:,:,:) ! CRM precipiation rate (surface)
@@ -173,6 +173,7 @@ contains
       if (.not. allocated(output%qpi)) allocate(output%qpi(ncol,crm_nx,crm_ny,crm_nz))
 
       if (.not. allocated(output%tk )) allocate(output%tk (ncol,crm_nx,crm_ny,crm_nz))
+      if (.not. allocated(output%tke)) allocate(output%tke(ncol,crm_nx,crm_ny,crm_nz))
       if (.not. allocated(output%tkh)) allocate(output%tkh(ncol,crm_nx,crm_ny,crm_nz))
       if (.not. allocated(output%prec_crm)) allocate(output%prec_crm(ncol,crm_nx,crm_ny))
 
@@ -217,6 +218,7 @@ contains
       call prefetch(output%qpl)
       call prefetch(output%qpi)
       call prefetch(output%tk )
+      call prefetch(output%tke)
       call prefetch(output%tkh)
       call prefetch(output%prec_crm)
       call prefetch(output%wvar)
@@ -428,6 +430,7 @@ contains
       output%qpi = 0
 
       output%tk = 0
+      output%tke= 0
       output%tkh = 0
       output%prec_crm = 0
 
@@ -564,6 +567,7 @@ contains
       if (allocated(output%qpl)) deallocate(output%qpl)
       if (allocated(output%qpi)) deallocate(output%qpi)
       if (allocated(output%tk )) deallocate(output%tk )
+      if (allocated(output%tke)) deallocate(output%tke)
       if (allocated(output%tkh)) deallocate(output%tkh)
       if (allocated(output%prec_crm)) deallocate(output%prec_crm)
 

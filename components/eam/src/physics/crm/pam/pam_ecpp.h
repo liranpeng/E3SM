@@ -37,6 +37,7 @@ inline void ecpp_crm_init( pam::PamCoupler &coupler ) {
   int nzstag = nz + 1;
 
   int mode_updnthresh = 16;
+// Liran: For other mode_updnthresh options, the code need to change!!!!
 /*
     1 = method originally implemented by Bill G
         wup_thresh   =  wup_stddev * abs(upthresh);
@@ -357,27 +358,17 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto nx              = coupler.get_option<int>("crm_nx");
   auto ny              = coupler.get_option<int>("crm_ny");
   auto nz              = coupler.get_option<int>("crm_nz");
-  printf("Liran check start ECPP stage4:\n");
   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  printf("Liran check start ECPP stage41:\n");
   auto ntavg1          = coupler.get_option<int>("ecpp_ntavg1");
-  printf("Liran check start ECPP stage42:\n");
   auto ntavg2          = coupler.get_option<int>("ecpp_ntavg2");
-  printf("Liran check start ECPP stage43:\n");
   auto mode_updnthresh = coupler.get_option<int>("mode_updnthresh");
-  printf("Liran check start ECPP stage44:\n");
   auto plumetype       = coupler.get_option<int>("plumetype");
-  printf("Liran check start ECPP stage45:\n");
   //auto NCLASS_CL       = coupler.get_option<int>("ecpp_NCLASS_CL");
   auto ndraft_max      = coupler.get_option<int>("ecpp_ndraft_max");
-  printf("Liran check start ECPP stage46:\n");
   //auto NCLASS_PR       = coupler.get_option<int>("ecpp_NCLASS_PR");
   auto gcm_dt          = coupler.get_option<real>("gcm_dt");
-  printf("Liran check start ECPP stage47:\n");
   auto crm_dt          = coupler.get_option<real>("crm_dt");
-  printf("Liran check start ECPP stage48:\n");
   auto crm_count       = coupler.get_option<int>("crm_count");
-  printf("Liran check start ECPP stage5:\n");
   int nupdraft = 0;
   int ndndraft = 0;
   int CLR = 1;       // Clear sub-class
@@ -763,7 +754,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 
   int nxy = nx*ny;
   parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-    for (int k_gcm=0; k_gcm<nzi; k_gcm++) {
+    for (int k_gcm=0; k_gcm<nz; k_gcm++) {
       //int l = plev-(k+1);
       int k_crm= (gcm_nlev+1)-1-k_gcm;
       /*
@@ -772,8 +763,11 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       ! downdraft is allowed above the condensate level (both liquid and ice).
       */
       cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
+      // BELOW: 0.01*qvs may be too large at low level.
+      // if( cloudmixr_total(i,j,k) >= max(0.01*qvs(i,j,k), cloudthresh_trans) ) then
       if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
         cloudtop(j,i,icrm) = k_crm; 
+        break; // exit the loop
       }
     }
     for (int k_crm=0; k_crm<nzi; k_crm++) {
@@ -825,7 +819,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
   // Value of mode_updnthresh: 16
   printf("\nValue of ijdel: %d: ", ijdel);
-  // Value of ijdel: 0
+  // Value of ijdel: 0 
 
   //if (ijdel > 0) then remove line 972 to 1008
 
@@ -986,6 +980,13 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   });
   printf("Liran check determine_transport_thresh 2\n");
   /*
+    ! Get masks to determine (cloud vs. clear) (up vs. down vs. other) categories.
+    ! Vertical velocities are checked on the cell vertical interfaces to determine
+    ! if they pass the threshold criteria. Clouds below the interface are then
+    ! used for updrafts and above the int. for downdrafts. Quiescent (other)
+    ! drafts use an average of the cloud above and below the interface to
+    ! determine cloudiness.
+
         ! case 16 & 17 -- added on 10-dec-2009
         !    updraft   and k  > "updraft   center k",  use max( wup_rms_k, wup_rms )
         !    updraft   and k <= "updraft   center k",  use wup_rms_k
@@ -1104,11 +1105,11 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 
       real wlarge = 1.0e10;   // m/s   Liran note: This seems important to adjust!!
 
-      for (int k_crm = kup_top(icrm); k_crm <= nz+1; ++k_crm) {
+      for (int k_crm = kup_top(icrm); k_crm <= nz; ++k_crm) {
           wup_thresh_k(k_crm, 0,icrm) = wlarge;
           wup_thresh_k(k_crm, 1,icrm) = wlarge;
       }
-      for (int k_crm = kdown_top(icrm); k_crm <= nz+1; ++k_crm) {
+      for (int k_crm = kdown_top(icrm); k_crm <= nz; ++k_crm) {
           wdown_thresh_k(k_crm, 0,icrm) =  -1. * wlarge;
           wdown_thresh_k(k_crm, 1,icrm) =  -1. * wlarge;
       }
@@ -1157,7 +1158,6 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       for (int i=0; i<nx; i++) {
         for (int j=0; j<ny; j++) {
         // Set initial mask values for the vertical cell boundaries...
-
           for (int k=0; k<nzstag; k++) {
             maskup(k,0) =  0;
             maskdn(k,0) =  0;
@@ -1180,8 +1180,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
             ! updraft only exist in cloudy area or precipitating clear area ++++mhwang
   */          
             cloudthresh_trans_temp = cloudthresh_trans;
-            if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
-                (qrloud(std::max(k - 1, 0),j,i,icrm)+ qrloud(std::min(k, nz),j,i,icrm)) * 0.5 > precthresh_trans ||
+            if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz-1), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
                (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz-1),j,i,icrm)) * 0.5 > precthresh_trans ){
                // Liran Only one threshold
               if (crm_wvel(k,j,i,icrm) > wup_thresh_k(k, 0,icrm)) {
@@ -1217,7 +1216,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
             }
 
             // Raining or not at cell boundaries...
-            if ((qrloud(std::max(k - 1, 0), j, i, icrm)+qrloud(std::min(k, nz-1), j, i, icrm))*0.5>prcpthresh){
+            if ((precmixr_total(std::max(k - 1, 0), j, i, icrm)+precmixr_total(std::min(k, nz-1), j, i, icrm))*0.5>prcpthresh){
               maskpry_bnd(k) = 1;
             } else {
               maskprn_bnd(k) = 1;
@@ -1226,13 +1225,13 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 
           for (int k=0; k<=nz; k++) {
             // Cloudy or clear at cell centers...
-            if (cloudmixr(k,j,i,icrm)>cloudthresh){
+            if (cloudmixr_total(k,j,i,icrm)>cloudthresh){
               maskcld(k) = 1;
             } else {
               maskclr(k) = 1;
             }
             // Raining or not at cell centers...
-            if (qrloud(k,j,i,icrm)>prcpthresh){
+            if (precmixr_total(k,j,i,icrm)>prcpthresh){
               maskpry(k) = 1;
             } else {
               maskprn(k) = 1;
@@ -1261,7 +1260,21 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 icl = CLR;
                 ipr = PRN;
               } else {
+                //setup_class_masks: bnd cloud up
+                if (maskcld(k-1) > 0 && maskclr(k-1) < 1) {
+                    icl = CLD;
+                } else if (maskclr(k-1) > 0 && maskcld(k-1) < 1) {
+                    icl = CLR;
+                } 
+                //setup_class_masks: bnd prcp up
+                if (maskpry(k-1) > 0 && maskprn(k-1) < 1) {
+                    ipr = PRY;
+                } else if (maskprn(k-1) > 0 && maskpry(k-1) < 1) {
+                    ipr = PRN;
+                } 
                 // call cloud_prcp_check
+                printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,icl);
+                printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,ipr);
               }
             // Downward, or at least downward quiescent  
             } else if (maskdn(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)<0)){  
@@ -1280,12 +1293,36 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 ipr = PRN;
               }else{
                 // call cloud_prcp_check
+                // setup_class_masks: bnd cloud down
+                if (maskcld(k) > 0 && maskclr(k) < 1) {
+                    ipr = CLD;
+                } else if (maskclr(k) > 0 && maskcld(k) < 1) {
+                    ipr = CLR;
+                } 
+                // setup_class_masks: bnd prcp down
+                if (maskpry(k) > 0 && maskprn(k) < 1) {
+                    ipr = PRY;
+                } else if (maskprn(k) > 0 && maskpry(k) < 1) {
+                    ipr = PRN;
+                } 
               }
             // Quiescent with w=0. Use the cell-center values averaged
             // surrounding the boundary for the cloud/prcp states.  
             } else {
               itr = QUI;
               // call cloud_prcp_check
+              // setup_class_masks: bnd cloud quiescent
+              if (maskcld_bnd(k) > 0 && maskclr_bnd(k) < 1) {
+                  ipr = CLD;
+              } else if (maskclr_bnd(k) > 0 && maskcld_bnd(k) < 1) {
+                  ipr = CLR;
+              } 
+              // setup_class_masks: bnd prcp quiescent
+              if (maskpry_bnd(k) > 0 && maskprn_bnd(k) < 1) {
+                  ipr = PRY;
+              } else if (maskprn_bnd(k) > 0 && maskpry_bnd(k) < 1) {
+                  ipr = PRN;
+              } 
             } // end of if (maskup(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)>0))
 /*
 ! +++mhwang Line 1612
@@ -1359,15 +1396,15 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     ! Use fractional cloudiness at SAM
 */
             if (icl==CLR){
-              printf("\nmask_cen 0: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
+              //printf("\nmask_cen 0: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
               mask_cen(k,j,i,icrm,icl,itr,ipr) =  mask_cen(k,j,i,icrm,icl,itr,ipr) + 0.5; 
-              printf("\nmask_cen 1: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
+              //printf("\nmask_cen 1: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
 
             } else if (icl==CLD){  
               mask_cen(k,j,i,icrm,CLD,itr,ipr) =  mask_cen(k,j,i,icrm,CLD,itr,ipr) + cldfrac(k, j, i, icrm) * 0.5; 
               mask_cen(k,j,i,icrm,CLR,itr,ipr) =  mask_cen(k,j,i,icrm,CLR,itr,ipr) + (1.0-cldfrac(k, j, i, icrm))*0.5;  
-              printf("\nmask_cen 20: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLD,itr,ipr,mask_cen(k,j,i,icrm,CLD,itr,ipr));
-              printf("\nmask_cen 21: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLR,itr,ipr,mask_cen(k,j,i,icrm,CLR,itr,ipr));
+              //printf("\nmask_cen 20: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLD,itr,ipr,mask_cen(k,j,i,icrm,CLD,itr,ipr));
+              //printf("\nmask_cen 21: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLR,itr,ipr,mask_cen(k,j,i,icrm,CLR,itr,ipr));
             }
 
             // !Next, look at the top boundary and determine it's
@@ -1398,15 +1435,15 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     ! use fractional cloudiness in SAM
 */
             if (icl==CLR){
-              printf("\nmask_cen 03: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
+              //printf("\nmask_cen 03: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
               mask_cen(k,j,i,icrm,icl,itr,ipr) =  mask_cen(k,j,i,icrm,icl,itr,ipr) + 0.5; 
-              printf("\nmask_cen 3: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
+              //printf("\nmask_cen 3: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,icl,itr,ipr,mask_cen(k,j,i,icrm,icl,itr,ipr));
 
             } else if (icl==CLD){  
               mask_cen(k,j,i,icrm,CLD,itr,ipr) =  mask_cen(k,j,i,icrm,CLD,itr,ipr) + cldfrac(k, j, i, icrm) * 0.5; 
               mask_cen(k,j,i,icrm,CLR,itr,ipr) =  mask_cen(k,j,i,icrm,CLR,itr,ipr) + (1.0-cldfrac(k, j, i, icrm))*0.5;  
-              printf("\nmask_cen 4: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLD,itr,ipr,mask_cen(k,j,i,icrm,CLD,itr,ipr));
-              printf("\nmask_cen 5: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLR,itr,ipr,mask_cen(k,j,i,icrm,CLR,itr,ipr));
+              //printf("\nmask_cen 4: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLD,itr,ipr,mask_cen(k,j,i,icrm,CLD,itr,ipr));
+              //printf("\nmask_cen 5: %d %d %d %d %d %d %d %.2f: ", k,j,i,icrm,CLR,itr,ipr,mask_cen(k,j,i,icrm,CLR,itr,ipr));
             }
 
           } // end of for (int k=0; k<=nz; k++) 
@@ -1448,6 +1485,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 acen_up = acen_up + mask_cen(k,j,i,icrm,iCL,UP1,iPR); 
                 abnd_quiesc = abnd_quiesc + mask_bnd(k,j,i,icrm,iCL,QUI,iPR); 
                 abnd_up = abnd_up + mask_bnd(k,j,i,icrm,iCL,UP1,iPR); 
+                //printf("\nmask_cen8: %d %d %d %d %d %d %d %.8f %.8f : ", k,j,i,icrm,iCL,QUI,iPR,mask_cen(k,j,i,icrm,iCL,QUI,iPR),mask_bnd(k,j,i,icrm,iCL,QUI,iPR));
               } // end of for (int iPR=0
             } // end of for (int iCL=0
           } // end of for (int i=0
@@ -1493,6 +1531,9 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     real wwrho_k = 0.0;
     real wwrho_km1 = 0.0;
     real tempwork = 0.0;
+    printf("\ncheck const: %d %d %d %d %d %d %d: ", nxy,QUI,CLD,CLR,NCLASS_CL,ndraft_max,NCLASS_PR);
+    // nxy = 8, QUI = 1, CLD = 2, CLR = 1, NCLASS_CL = 2, ndraft_max = 3, NCLASS_PR = 2
+    // iCL,QUI,iPR
     for (int j=0; j<ny; j++) {
       for (int i=0; i<nx; i++) {
         for (int iCL=0; iCL<NCLASS_CL; iCL++) {
@@ -1501,15 +1542,15 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
               for (int k=0; k<nz; k++) {
                 // We now have enough information to aggregate the variables into domain
                 // averages by class. Do this first for the cell centers...
-                if (iCL==CLR){
-                  printf("\narea_cen_sum0: %d %d %d %d %d %d %d %.8f %.8f : ", k,j,i,icrm,iCL,iTR,iPR,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
-                }
+                //if (iCL==CLR){
+                //  printf("\narea_cen_sum0: %d %d %d %d %d %d %d %.8f %.8f : ", k,j,i,icrm,iCL,iTR,iPR,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
+                //}
                 mask_tmp = mask_cen(k,j,i,icrm,iCL,iTR,iPR)/nxy;
                 area_cen_final(icrm,iPR,iTR,iCL,k) = area_cen_final(icrm,iPR,iTR,iCL,k) + mask_tmp;
                 area_cen_sum(icrm,iPR,iTR,iCL,k) = area_cen_sum(icrm,iPR,iTR,iCL,k) + mask_tmp;
-                if (iCL==CLR){
-                  printf("\narea_cen_sum: %d %d %d %d %d %d %d %.8f %.8f %.8f: ", k,j,i,icrm,iCL,iTR,iPR,mask_tmp,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
-                }
+                //if (iCL==CLR){
+                //  printf("\narea_cen_sum : %d %d %d %d %d %d %d %.8f %.8f %.8f: ", k,j,i,icrm,iCL,iTR,iPR,mask_tmp,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
+                //}
                 rh_cen_sum(icrm,iPR,iTR,iCL,k) = rh_cen_sum(icrm,iPR,iTR,iCL,k) + rhsum1(k,j,i,icrm) *mask_tmp;
                 qcloud_cen_sum(icrm,iPR,iTR,iCL,k) = qcloud_cen_sum(icrm,iPR,iTR,iCL,k) + qcloud(k,j,i,icrm)*mask_tmp;
                 qrain_cen_sum(icrm,iPR,iTR,iCL,k) = qrain_cen_sum(icrm,iPR,iTR,iCL,k) + qrloud(k,j,i,icrm)*mask_tmp;
@@ -1536,13 +1577,13 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 wwrho_k   = 0.5*(1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm))*crm_wvel(k,j,i,icrm);
                 wwrho_km1 = 0.5*(1.0/altsum1(km2,j,i,icrm) + 1.0/altsum1(km1,j,i,icrm))*crm_wvel(km1,j,i,icrm);
                 testgt0 = std::max(0.0,wwrho_k-wwrho_km1);
-                if (iCL==CLR){
-                  printf("\narea_bnd_sum 0: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
-                }
+                //if (iCL==CLR){
+                //  printf("\narea_bnd_sum 0: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
+                //}
                 area_bnd_sum(icrm,iPR,iTR,iCL,k) = area_bnd_sum(icrm,iPR,iTR,iCL,k) + mask_tmp;
-                if (iCL==CLR){
-                  printf("\narea_bnd_sum 1: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
-                }
+                //if (iCL==CLR){
+                //  printf("\narea_bnd_sum 1: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
+                //}
                 mass_bnd_sum(icrm,iPR,iTR,iCL,k) = mass_bnd_sum(icrm,iPR,iTR,iCL,k) + wwrho_k*mask_tmp;
                 ent_bnd_sum(icrm,iPR,iTR,iCL,k) = ent_bnd_sum(icrm,iPR,iTR,iCL,k) + testgt0*mask_tmp;
                 // ! calculate the mean vertical velocity over the quiescent class  +++mhwang
@@ -1750,9 +1791,6 @@ inline void cloud_prcp_check(const std::vector<int>& mask1, const std::vector<in
         std::cerr << "cloud_prcp_check: k =" << k << " n =" << n << std::endl;
         throw std::runtime_error("ERROR: k out of bounds in cloud_prcp_check");
     }
-
-    // Adjust index for 0-based arrays
-    k -= 1;
 
     // Whichever mask has the value 1 has the associated flag put into iout
     if (mask1[k] > 0 && mask2[k] < 1) {

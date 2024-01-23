@@ -250,13 +250,14 @@ extern "C" void pam_driver() {
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
   printf("%s %d %d\n", "Liran check outside nstep:", nstep,nstop);
+  pam_ecpp_copy_to_host(coupler);
   // Compute CRM feedback tendencies and copy to host
   pam_feedback_compute_tendencies(coupler,gcm_dt);
   pam_feedback_copy_to_host(coupler);
-  
+  printf("\npam_feedback_copy_to_host\n");  
   // Copy the final CRM state to the host to be saved for next time step
-  pam_state_copy_to_host(coupler);
-
+  pam_state_copy_to_host(coupler); 
+  printf("\npam_ecpp_copy_to_host\n");  
   // Compute horizontal means of CRM state variables and copy to host
   pam_output_compute_means(coupler);
   pam_output_copy_to_host(coupler);

@@ -139,6 +139,9 @@ coupler.set_option<int>("ecpp_NCLASS_PR",NCLASS_PR);
 coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
 
 dm_device.register_and_allocate<int>("crm_cnt"     , "number of crm timestep count",  {nens},{"nens"});
+printf("Liran check start ECPP 0:\n");
+dm_device.register_and_allocate<int>("crm_level2_cnt"     , "number of crm level 2 average count",  {nens},{"nens"});
+printf("Liran check start ECPP 1:\n");
 dm_device.register_and_allocate<int>("ndown"       , "number of down count",  {nens},{"nens"});
 dm_device.register_and_allocate<int>("nup"         , "number of nup count",  {nens},{"nens"});
 dm_device.register_and_allocate<int>("kup_top"     , "maximum kup"  ,  {nens},{"nens"});
@@ -153,6 +156,7 @@ dm_device.register_and_allocate<real>("updraftbase", "<description>",  {nens}, {
 dm_device.register_and_allocate<real>("updrafttop", "<description>" ,  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndrafttop", "<description>" ,  {nens}, {"nens"});
 dm_device.register_and_allocate<real>("dndraftbase", "<description>",  {nens}, {"nens"});
+printf("Liran check start ECPP 2:\n");
 // 4D vector allocations
 dm_device.register_and_allocate<real>("qlsink_bf" , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("prain"     , "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
@@ -178,16 +182,15 @@ dm_device.register_and_allocate<real>("prainsum1", "<description>", {nz,ny,nx,ne
 dm_device.register_and_allocate<real>("qvssum1", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("liran_test4d", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
 dm_device.register_and_allocate<real>("liran_test4davg", "<description>", {nz,ny,nx,nens}, {"z","y","x","nens"});
+printf("Liran check start ECPP 3:\n");
 // 2D vectors
 dm_device.register_and_allocate<real>("xkhvsum", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wwqui_cen_sum", "<description>", {nz,nens}, {"z","nens"});\
+dm_device.register_and_allocate<real>("wwqui_cen", "<description>", {nz,nens}, {"z","nens"});\
 dm_device.register_and_allocate<real>("liran_test2d", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("cldtot2d", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wwqui_bnd_sum", "<description>", {nz,nens}, {"z","nens"}); //nz+1
-dm_device.register_and_allocate<real>("wwqui_cloudy_cen_sum", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("wwqui_cloudy_bnd_sum", "<description>", {nz,nens}, {"z","nens"});//nz+1
-//dm_device.register_and_allocate<real>("wup_thresh", "<description>", {nz,nens}, {"z","nens"});//nz+1
-//dm_device.register_and_allocate<real>("wdown_thresh", "<description>", {nz,nens}, {"z","nens"});//nz+1
+dm_device.register_and_allocate<real>("wwqui_bnd", "<description>", {nzi,nens}, {"zi","nens"}); //nz+1
+dm_device.register_and_allocate<real>("wwqui_cloudy_cen", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("wwqui_cloudy_bnd", "<description>", {nzi,nens}, {"zi","nens"});//nz+1
 dm_device.register_and_allocate<int>("nup_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_bar_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<int>("ndown_k", "<description>", {nz,nens}, {"z","nens"});
@@ -196,11 +199,30 @@ dm_device.register_and_allocate<real>("wdown_stddev_k", "<description>", {nz,nen
 dm_device.register_and_allocate<real>("wup_stddev_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_k", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_cen", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cloudy_bar_cen", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_tbeg", "<description>",  {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cloudy_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
+
+dm_device.register_and_allocate<real>("ecpp_sum_area_cen_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_sum_area_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_sum_rh_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_sum_qcloud_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_sum_qice_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_sum_precsolidcen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+
+dm_device.register_and_allocate<real>("ecpp_sum_area_bnd_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+dm_device.register_and_allocate<real>("ecpp_sum_area_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+dm_device.register_and_allocate<real>("ecpp_sum_mass_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+
+
 printf("Liran check ECPP allocation done the first part\n");
 
 auto crm_cnt         = dm_device.get<int,1>("crm_cnt");
+auto crm_level2_cnt  = dm_device.get<int,1>("crm_level2_cnt");
 auto ndown           = dm_device.get<int,1>("ndown");
 auto nup             = dm_device.get<int,1>("nup");
 auto kup_top         = dm_device.get<int,1>("kup_top");
@@ -219,6 +241,7 @@ auto dndraftbase     = dm_device.get<real,1>("dndraftbase");
 printf("\nLiran check start updraftbase calculation\n");
 for (int icrm = 0; icrm < nens; ++icrm) {
     crm_cnt (icrm) = 0;
+    crm_level2_cnt (icrm) = 0;
     ndown (icrm) = 0;
     nup (icrm) = 0;
     kup_top(icrm) = 0;
@@ -235,6 +258,8 @@ for (int icrm = 0; icrm < nens; ++icrm) {
     dndraftbase(icrm) = 0;
 }
  printf("Liran check start ECPP allocation here\n");
+ printf("\nValue of crm_cnt: %d: ", crm_cnt(0));
+ printf("\nValue of crm_level2_cnt: %d: ", crm_level2_cnt(0));
 
 auto qlsink_bf            = dm_device.get<real,4>("qlsink_bf");
 auto prain                = dm_device.get<real,4>("prain");
@@ -271,17 +296,33 @@ auto wup_rms_k            = dm_device.get<real,2>("wup_rms_k");
 auto wdown_rms_k          = dm_device.get<real,2>("wdown_rms_k");
 auto wup_rms_ksmo         = dm_device.get<real,2>("wup_rms_ksmo");
 auto wdown_rms_ksmo       = dm_device.get<real,2>("wdown_rms_ksmo");
-auto wwqui_cen_sum        = dm_device.get<real,2>("wwqui_cen_sum");
-auto wwqui_bnd_sum        = dm_device.get<real,2>("wwqui_bnd_sum");
+auto wwqui_cen            = dm_device.get<real,2>("wwqui_cen");
+auto wwqui_bnd            = dm_device.get<real,2>("wwqui_bnd");
 auto liran_test2d         = dm_device.get<real,2>("liran_test2d");
 auto cldtot2d             = dm_device.get<real,2>("cldtot2d");
-auto wwqui_cloudy_cen_sum   = dm_device.get<real,2>("wwqui_cloudy_cen_sum");
-auto wwqui_cloudy_bnd_sum   = dm_device.get<real,2>("wwqui_cloudy_bnd_sum");
-auto ecpp_output_wwqui_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cen");
+auto wwqui_cloudy_cen     = dm_device.get<real,2>("wwqui_cloudy_cen");
+auto wwqui_cloudy_bnd     = dm_device.get<real,2>("wwqui_cloudy_bnd");
+auto ecpp_output_wwqui_cen         = dm_host.get<real,2>("ecpp_output_wwqui_cen");
 auto ecpp_output_wwqui_cloudy_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_cen");
 auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
 auto ecpp_output_wwqui_cloudy_bnd  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_bnd");
-//auto wwqui_cloudy_bnd_sum = dm_device.get<real,2>("wwqui_cloudy_bnd_sum");     // Note: Adjust dimensionality if needed
+
+auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
+auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
+auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
+auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
+auto ecpp_sum_tbeg                  = dm_device.get<real,2>("ecpp_sum_tbeg");
+auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
+auto ecpp_sum_area_cen              = dm_device.get<real,5>("ecpp_sum_area_cen");
+auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
+auto ecpp_sum_area_bnd              = dm_device.get<real,5>("ecpp_sum_area_bnd");
+auto ecpp_sum_mass_bnd              = dm_device.get<real,5>("ecpp_sum_mass_bnd");
+auto ecpp_sum_rh_cen                = dm_device.get<real,5>("ecpp_sum_rh_cen");
+auto ecpp_sum_qcloud_cen            = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
+auto ecpp_sum_qice_cen              = dm_device.get<real,5>("ecpp_sum_qice_cen");
+auto ecpp_sum_precsolidcen          = dm_device.get<real,5>("ecpp_sum_precsolidcen");
+
+//auto wwqui_cloudy_bnd = dm_device.get<real,2>("wwqui_cloudy_bnd");     // Note: Adjust dimensionality if needed
 //auto wup_thresh           = dm_device.get<real,2>("wup_thresh");               // Note: Adjust dimensionality if needed
 //auto wdown_thresh         = dm_device.get<real,2>("wdown_thresh");             // Note: Adjust dimensionality if needed
 
@@ -325,21 +366,38 @@ parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   wup_stddev_k(iz,iens)                   = 0;
   wup_rms_k(iz,iens)                      = 0;
   wdown_rms_k(iz,iens)                    = 0;
-  wup_rms_ksmo(iz,iens)                   = 0;
-  wdown_rms_ksmo(iz,iens)                 = 0;
-  wwqui_cen_sum(iz,iens)                  = 0;
+  wwqui_cen(iz,iens)                      = 0;
   liran_test2d(iz,iens)                   = 1;
   cldtot2d(iz,iens)                       = 0.0;
-  //wwqui_bnd_sum(iz,iens)           = 0;  // Note: This might need adjustment for nz+1 dimension
-  wwqui_cloudy_cen_sum(iz,iens)           = 0;
-  wwqui_cloudy_bnd_sum(iz,iens)           = 0;
+  wwqui_cloudy_cen(iz,iens)               = 0;
   ecpp_output_wwqui_cen(iz,iens)          = 0;
   ecpp_output_wwqui_cloudy_cen(iz,iens)   = 0;
+  ecpp_sum_wwqui_bar_cen(iz,iens)         = 0;
+  ecpp_sum_wwqui_cloudy_bar_cen(iz,iens)  = 0;
+  ecpp_sum_tbeg(iz,iens)                  = 0;
+});
+
+parallel_for(SimpleBounds<2>(nzi,nens), YAKL_LAMBDA (int iz, int iens) {
+  wwqui_bnd(iz,iens)                      = 0; 
+  wwqui_cloudy_bnd(iz,iens)               = 0;
+  wup_rms_ksmo(iz,iens)                   = 0;
+  wdown_rms_ksmo(iz,iens)                 = 0;
   ecpp_output_wwqui_bnd(iz,iens)          = 0;
   ecpp_output_wwqui_cloudy_bnd(iz,iens)   = 0;
-  //wwqui_cloudy_bnd_sum(iz,iens)    = 0;  // Note: This might need adjustment for nz+1 dimension
-  //wup_thresh(iz,iens)              = 0;  // Note: This might need adjustment for nz+1 dimension
-  //wdown_thresh(iz,iens)            = 0;  // Note: This might need adjustment for nz+1 dimension
+  ecpp_sum_wwqui_bar_bnd(iz,iens)         = 0;
+  ecpp_sum_wwqui_cloudy_bar_bnd(iz,iens)  = 0;
+});
+
+parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+  ecpp_sum_area_cen_final(icrm,iPR,iTR,iCL,k) = 0;
+  ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_sum_area_bnd_final(icrm,iPR,iTR,iCL,k) = 0;
+  ecpp_sum_area_bnd(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_sum_mass_bnd(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_sum_rh_cen(icrm,iPR,iTR,iCL,k)         = 0;
+  ecpp_sum_qcloud_cen(icrm,iPR,iTR,iCL,k)     = 0;
+  ecpp_sum_qice_cen(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)   = 0;
 });
 printf("Liran check start ECPP init end here\n");
 }
@@ -368,7 +426,6 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   //auto NCLASS_PR       = coupler.get_option<int>("ecpp_NCLASS_PR");
   auto gcm_dt          = coupler.get_option<real>("gcm_dt");
   auto crm_dt          = coupler.get_option<real>("crm_dt");
-  auto crm_count       = coupler.get_option<int>("crm_count");
   int nupdraft = 0;
   int ndndraft = 0;
   int CLR = 1;       // Clear sub-class
@@ -389,16 +446,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   dndn = ndndraft;
   dnup = nupdraft;
 
-  //int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
-  //int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
-  //NCLASS_CL = ncc_in; // Number of cloud classes
-  //NCLASS_PR = nprcp_in; // Number of precipitaion classes
-  //coupler.set_option<int>("ecpp_NCLASS_CL",NCLASS_CL);
-  //coupler.set_option<int>("ecpp_NCLASS_PR",NCLASS_PR);
-  //coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
   printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
   printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
-  //printf("%s %d\n", "Liran check crm_count:", crm_count);
   
   printf("\nValue of ndraft_max 2: %d: ", ndraft_max);
   printf("\nValue of dndn: %d: ", dndn);
@@ -409,6 +458,9 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
   auto crm_cnt                  = dm_device.get<int,1>("crm_cnt");
+  printf("Liran check start ECPP stage0:\n");
+  auto crm_level2_cnt           = dm_device.get<int,1>("crm_level2_cnt");
+  printf("Liran check start ECPP stage1:\n");
   auto ndown                    = dm_device.get<int,1>("ndown");
   auto nup                      = dm_device.get<int,1>("nup");
   auto kup_top                  = dm_device.get<int,1>("kup_top");
@@ -450,85 +502,106 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto wdown_rms_ksmo           = dm_device.get<real, 2>("wdown_rms_ksmo");
   auto liran_test4d             = dm_device.get<real, 4>("liran_test4d");
   auto liran_test4davg          = dm_device.get<real, 4>("liran_test4davg");
-  auto wwqui_cen_sum            = dm_device.get<real, 2>("wwqui_cen_sum");
-  auto wwqui_bnd_sum            = dm_device.get<real, 2>("wwqui_bnd_sum");
+  printf("Liran check start ECPP stage21:\n");
+  auto wwqui_cen                = dm_device.get<real, 2>("wwqui_cen");
+  printf("Liran check start ECPP stage22:\n");
+  auto wwqui_bnd                = dm_device.get<real, 2>("wwqui_bnd");
+  printf("Liran check start ECPP stage23:\n");
   auto liran_test2d             = dm_device.get<real, 2>("liran_test2d");
+  printf("Liran check start ECPP stage24:\n");
   auto cldtot2d                 = dm_device.get<real, 2>("cldtot2d");
-  //auto wwqui_bnd_sum        = dm_device.get<real,2>("wwqui_bnd_sum");            // Note: Adjust dimensionality if needed
-  auto wwqui_cloudy_cen_sum     = dm_device.get<real, 2>("wwqui_cloudy_cen_sum");
-  auto wwqui_cloudy_bnd_sum     = dm_device.get<real, 2>("wwqui_cloudy_bnd_sum");
-
+  printf("Liran check start ECPP stage25:\n");
+  auto wwqui_cloudy_cen         = dm_device.get<real, 2>("wwqui_cloudy_cen");
+  printf("Liran check start ECPP stage26:\n");
+  auto wwqui_cloudy_bnd         = dm_device.get<real, 2>("wwqui_cloudy_bnd");
+  printf("Liran check start ECPP stage3:\n");
   auto ecpp_output_wwqui_cen         = dm_host.get<real,2>("ecpp_output_wwqui_cen");
   auto ecpp_output_wwqui_cloudy_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_cen");
   auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
   auto ecpp_output_wwqui_cloudy_bnd  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_bnd");
+  auto ecpp_output_tbeg              = dm_host.get<real,2>("ecpp_output_tbeg");
+printf("Liran check start ECPP stage4:\n");
+  auto ecpp_output_acen              = dm_host.get<real,5>("ecpp_output_acen");
+  auto ecpp_output_abnd              = dm_host.get<real,5>("ecpp_output_abnd");
+  auto ecpp_output_acen_tf           = dm_host.get<real,5>("ecpp_output_acen_tf");
+  auto ecpp_output_abnd_tf           = dm_host.get<real,5>("ecpp_output_abnd_tf");
+  auto ecpp_output_massflxbnd        = dm_host.get<real,5>("ecpp_output_massflxbnd");
+  auto ecpp_output_rhcen             = dm_host.get<real,5>("ecpp_output_rhcen");
+  auto ecpp_output_qcloudcen         = dm_host.get<real,5>("ecpp_output_qcloudcen");
+  auto ecpp_output_qlsinkcen         = dm_host.get<real,5>("ecpp_output_qlsinkcen");
+  auto ecpp_output_precrcen          = dm_host.get<real,5>("ecpp_output_precrcen");
+  auto ecpp_output_precsolidcen      = dm_host.get<real,5>("ecpp_output_precsolidcen");
+  
+printf("Liran check start ECPP stage5:\n");
+  auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
+  auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
+  auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
+  auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
 
-  auto ecpp_output_acen  = dm_host.get<real,5>("ecpp_output_acen");
-  auto ecpp_output_abnd  = dm_host.get<real,5>("ecpp_output_abnd");
-  auto ecpp_output_acen_tf  = dm_host.get<real,5>("ecpp_output_acen_tf");
-  auto ecpp_output_abnd_tf  = dm_host.get<real,5>("ecpp_output_abnd_tf");
-  auto ecpp_output_massflxbnd  = dm_host.get<real,5>("ecpp_output_massflxbnd");
-  auto ecpp_output_rhcen  = dm_host.get<real,5>("ecpp_output_rhcen");
-  auto ecpp_output_qcloudcen  = dm_host.get<real,5>("ecpp_output_qcloudcen");
-  auto ecpp_output_qlsinkcen  = dm_host.get<real,5>("ecpp_output_qlsinkcen");
-  auto ecpp_output_precrcen  = dm_host.get<real,5>("ecpp_output_precrcen");
-  auto ecpp_output_precsolidcen  = dm_host.get<real,5>("ecpp_output_precsolidcen");
-  auto ecpp_output_tbeg  = dm_host.get<real,2>("ecpp_output_tbeg");
-
+  auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
+  auto ecpp_sum_area_cen              = dm_device.get<real,5>("ecpp_sum_area_cen");
+  auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
+  auto ecpp_sum_area_bnd          = dm_device.get<real,5>("ecpp_sum_area_bnd");
+  auto ecpp_sum_mass_bnd          = dm_device.get<real,5>("ecpp_sum_mass_bnd");
+  auto ecpp_sum_rh_cen            = dm_device.get<real,5>("ecpp_sum_rh_cen");
+  auto ecpp_sum_qcloud_cen        = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
+  auto ecpp_sum_qice_cen          = dm_device.get<real,5>("ecpp_sum_qice_cen");
+  auto ecpp_sum_precsolidcen      = dm_device.get<real,5>("ecpp_sum_precsolidcen");
+  auto ecpp_sum_tbeg              = dm_device.get<real,2>("ecpp_sum_tbeg");
   // Get values from PAM cloud fields
   auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk");
   auto host_state_shoc_tkh      = dm_host.get<real,4>("state_shoc_tkh");
-  printf("Liran check start ECPP stage6:\n");
-  auto host_state_shoc_tke      = dm_host.get<real,4>("state_shoc_tke");
-  printf("Liran check start ECPP stage7:\n");
+  
+  printf("Liran check start ECPP stage71:\n");
   auto host_state_qv            = dm_host.get<real,4>("state_qv");
   auto host_state_qc            = dm_host.get<real,4>("state_qc");
   auto host_state_qr            = dm_host.get<real,4>("state_qr");
   auto host_state_qi            = dm_host.get<real,4>("state_qi");
-  auto state_qv                 = dm_host.get<real const,4>("state_qv").createDeviceCopy();
-  auto state_qc                 = dm_host.get<real const,4>("state_qc").createDeviceCopy();
-  auto state_qr                 = dm_host.get<real const,4>("state_qr").createDeviceCopy();
-  auto state_qi                 = dm_host.get<real const,4>("state_qi").createDeviceCopy();
+  printf("Liran check start ECPP stage73:\n");
   auto crm_temp                 = dm_device.get<real,4>("temp");
   auto qvloud                   = dm_device.get<real,4>("water_vapor");
   auto qcloud                   = dm_device.get<real,4>("cloud_water");
   auto qrloud                   = dm_device.get<real,4>("rain");
   auto qiloud                   = dm_device.get<real,4>("ice");
+  printf("Liran check start ECPP stage74:\n");
   auto qirloud                  = dm_device.get<real,4>("ice_rime");
   auto ref_pres                 = dm_device.get<real,2>("ref_pres");
   auto crm_wvel                 = dm_device.get<real,4>("wvel");
+  printf("Liran check start ECPP stage75:\n");
   auto updraftbase              = dm_device.get<real,1>("updraftbase");
   auto updrafttop               = dm_device.get<real,1>("updrafttop");
   auto dndrafttop               = dm_device.get<real,1>("dndrafttop");
   auto dndraftbase              = dm_device.get<real,1>("dndraftbase");
   auto cldfrac                  = dm_device.get<real,4>( "cldfrac");
+  printf("Liran check start ECPP stage6:\n");
+  auto host_state_shoc_tke      = dm_host.get<real,4>("state_shoc_tke");
   //------------------------------------------------------------------------------------------------
   // Define variables used by subroutine categorization_stats
   real7d mask_bnd("mask_bnd",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
   real7d mask_cen("mask_cen",nzi,ny,nx,nens,NCLASS_CL,ndraft_max,NCLASS_PR);
   real5d area_cen_final("area_cen_final",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d area_cen_sum("area_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d area_cen("area_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
   real5d area_bnd_final("area_bnd_final",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
-  real5d area_bnd_sum("area_bnd_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
-  real5d mass_bnd_final("mass_bnd_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
-  real5d mass_bnd_sum("mass_bnd_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
-  real5d mass_cen_final("mass_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d mass_cen_sum("mass_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d ent_bnd_sum("ent_bnd_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
-  real5d rh_cen_sum("rh_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qcloud_cen_sum("qcloud_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qcloud_bf_cen_sum("qcloud_bf_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qrain_cen_sum("qrain_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qice_cen_sum("qice_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qsnow_cen_sum("qsnow_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qgraup_cen_sum("qgraup_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qlsink_cen_sum("qlsink_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d precr_cen_sum("precr_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d precsolid_cen_sum("precsolid_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d precall_cen_sum("precall_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qlsink_bf_cen_sum("qlsink_bf_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d qlsink_avg_cen_sum("qlsink_avg_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
-  real5d prain_cen_sum("prain_cen_sum",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);      
+  real5d area_bnd("area_bnd",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
+  real5d mass_bnd_final("mass_bnd",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
+  real5d mass_bnd("mass_bnd",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
+  real5d mass_cen_final("mass_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d mass_cen("mass_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d ent_bnd("ent_bnd",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi);
+  real5d rh_cen("rh_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qcloud_cen("qcloud_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qcloud_bf_cen("qcloud_bf_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qrain_cen("qrain_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qice_cen("qice_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qsnow_cen("qsnow_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qgraup_cen("qgraup_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qlsink_cen("qlsink_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d precr_cen("precr_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d precsolid_cen("precsolid_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d precall_cen("precall_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qlsink_bf_cen("qlsink_bf_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d qlsink_avg_cen("qlsink_avg_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);
+  real5d prain_cen("prain_cen",nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz);      
   real2d acldy_cen_tbeg("acldy_cen_tbeg",nz,nens);
   real2d wwqui_bar_cen("wwqui_bar_cen",nz,nens);
   real2d wwqui_bar_bnd("wwqui_bar_bnd",nzi,nens);
@@ -601,39 +674,37 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 
   parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
      area_cen_final(icrm,iPR,iTR,iCL,k) = 0.0;
-     area_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
+     area_cen(icrm,iPR,iTR,iCL,k) = 0.0;
      mass_cen_final(icrm,iPR,iTR,iCL,k) = 0.0;
-     mass_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     rh_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qcloud_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qcloud_bf_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qrain_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qice_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qsnow_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qgraup_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qlsink_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     precr_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     precsolid_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     precall_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qlsink_bf_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     qlsink_avg_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;
-     prain_cen_sum(icrm,iPR,iTR,iCL,k) = 0.0;   
+     mass_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     rh_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qcloud_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qcloud_bf_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qrain_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qice_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qsnow_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qgraup_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qlsink_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     precr_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     precsolid_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     precall_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qlsink_bf_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     qlsink_avg_cen(icrm,iPR,iTR,iCL,k) = 0.0;
+     prain_cen(icrm,iPR,iTR,iCL,k) = 0.0;   
   });
 
   parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
-     ent_bnd_sum(icrm,iPR,iTR,iCL,k) = 0.0;
+     ent_bnd(icrm,iPR,iTR,iCL,k) = 0.0;
      area_bnd_final(icrm,iPR,iTR,iCL,k) = 0.0;
-     area_bnd_sum(icrm,iPR,iTR,iCL,k) = 0.0;
+     area_bnd(icrm,iPR,iTR,iCL,k) = 0.0;
      mass_bnd_final(icrm,iPR,iTR,iCL,k) = 0.0;
-     mass_bnd_sum(icrm,iPR,iTR,iCL,k) = 0.0;  
+     mass_bnd(icrm,iPR,iTR,iCL,k) = 0.0;  
   });
 
   //------------------------------------------------------------------------------------------------
   parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
     crm_cnt(iens) = crm_cnt(iens) + 1;
   });
-  crm_count = crm_count+2;
-  coupler.set_option<int>("crm_count",crm_count);
   runcount = crm_cnt(0);
   printf("%s %d\n", "Liran check runcount:", runcount);
   // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
@@ -643,16 +714,17 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   // Ensure ntavg2_ss is a multiple of ntavg1_ss
   ecpp_ntavg1_ss = (int)(ecpp_ntavg2_ss / (ecpp_ntavg2_ss / ecpp_ntavg1_ss));
   temp0 = (int)(ecpp_ntavg1_ss);
+  printf("%s %d\n", "Liran check ecpp_ntavg1_ss 00:", temp0);
   temp1 = (int)(crm_dt);
   ntavg1 = temp0/temp1;
   ntavg2 = ntavg1; // Liran: setting level 1 averaging and level 2 averaging the same for now. 
   temp0 = (int)(ecpp_ntavg2_ss);
   ntavg2 =  temp0/ temp1;
-  printf("%s %d\n", "Liran check ecpp_ntavg1_ss 00:", temp0);
-  printf("%s %d\n", "Liran check crm_dt 00:", temp1);
+  printf("%s %d\n", "Liran check ecpp_ntavg2_ss 00:", temp0);
+  //printf("%s %d\n", "Liran check crm_dt 00:", temp1);
   printf("%s %d\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", temp0/temp1);
   printf("%s %d\n", "Liran check ntavg1", ntavg1);
-
+  printf("%s %d\n", "Liran check ntavg2", ntavg2);
   // Set level-1 and level-2 averaging periods for ECPP
   
   // Calculate number of steps assuming dt evenly divides ntavg[12]_ss
@@ -679,16 +751,17 @@ parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
     qvs(k,j,i,icrm) = .622*EVS/(ref_pres(icrm,k)*100.-EVS); //  ! pres(icrm,kk) with unit of hPa
     alt(k,j,i,icrm) =  287.0*crm_temp(k,j,i,icrm)/(100.*ref_pres(icrm,k));
     real rh_temp = host_state_qv(k,j,i,icrm)/qvs(k,j,i,icrm);
-    yakl::atomicAdd(altsum1(k,j,i,icrm) , alt(k,j,i,icrm));
-    yakl::atomicAdd(liran_test4davg(k,j,i,icrm) , liran_test4d(k,j,i,icrm));
-    yakl::atomicAdd(qcloudsum1(k,j,i,icrm) , qcloud(k,j,i,icrm));
-    yakl::atomicAdd(qrainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
-    yakl::atomicAdd(qicesum1(k,j,i,icrm) , qiloud(k,j,i,icrm));
-    yakl::atomicAdd(prainsum1(k,j,i,icrm) , qrloud(k,j,i,icrm));
-    yakl::atomicAdd(qsnowsum1(k,j,i,icrm) , qsnowsum1(k,j,i,icrm)); // This is ZERO!! for now
-    yakl::atomicAdd(ecppwwsum1(k,j,i,icrm) , crm_wvel(k,j,i,icrm));
-    yakl::atomicAdd(rhsum1(k,j,i,icrm) , rh_temp);
+    altsum1(k,j,i,icrm) = altsum1(k,j,i,icrm) + alt(k,j,i,icrm);
+    liran_test4davg(k,j,i,icrm) = liran_test4davg(k,j,i,icrm) + liran_test4d(k,j,i,icrm);
+    qcloudsum1(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qcloud(k,j,i,icrm);
+    qrainsum1(k,j,i,icrm) = qrainsum1(k,j,i,icrm) + qrloud(k,j,i,icrm);
+    qicesum1(k,j,i,icrm)  = qicesum1(k,j,i,icrm) + qiloud(k,j,i,icrm);
+    prainsum1(k,j,i,icrm) = prainsum1(k,j,i,icrm) + qrloud(k,j,i,icrm);
+    qsnowsum1(k,j,i,icrm) = qsnowsum1(k,j,i,icrm) + qsnowsum1(k,j,i,icrm); // This is ZERO!! for now
+    ecppwwsum1(k,j,i,icrm) = ecppwwsum1(k,j,i,icrm) + crm_wvel(k,j,i,icrm);
+    rhsum1(k,j,i,icrm) = rhsum1(k,j,i,icrm) + rh_temp;
 });
+printf("Liran check start ECPP ecpp_crm_stat 001\n");
 real r_nx_ny  = 1.0/(nx*ny);  // precompute reciprocal to avoid costly divisions
 parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int iens) {
     yakl::atomicAdd( acldy_cen_tbeg (k,iens), cldfrac(k,j,i,iens) * r_nx_ny );
@@ -705,7 +778,9 @@ parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, i
 
 */
 printf("%s %.2f\n", "Liran check liran_test4davg:", liran_test4davg(10,10,10,10));
-// Check if we have reached the end of the level 1 time averaging period   ----------------------------------------------------------------
+// ----------------------------------------------------------------------
+// Check if we have reached the end of the level 1 time averaging period   
+// ----------------------------------------------------------------------
 if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   printf("%s %.2f\n", "Liran check liran_test4davg average start:", liran_test4davg(10,10,10,10));
   parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
@@ -713,13 +788,13 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       //printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
       real temp = 0.0;
       liran_test4davg(k,j,i,icrm) = liran_test4davg(k,j,i,icrm)/ntavg1;
-      qcloudsum1(k,j,i,icrm)      = qcloudsum1(k,j,i,icrm)  /ntavg1;
-      qrainsum1(k,j,i,icrm)       = qrainsum1(k,j,i,icrm)   /ntavg1;
-      qicesum1(k,j,i,icrm)        = qicesum1(k,j,i,icrm)    /ntavg1;
-      qsnowsum1(k,j,i,icrm)       = qsnowsum1(k,j,i,icrm)   /ntavg1;
-      altsum1(k,j,i,icrm)         = altsum1(k,j,i,icrm)     /ntavg1;
-      ecppwwsum1(k,j,i,icrm)      = ecppwwsum1(k,j,i,icrm)  /ntavg1;
-      rhsum1(k,j,i,icrm)          = rhsum1(k,j,i,icrm)      /ntavg1;
+      qcloudsum1(k,j,i,icrm)      = qcloudsum1(k,j,i,icrm)     /ntavg1;
+      qrainsum1(k,j,i,icrm)       = qrainsum1(k,j,i,icrm)      /ntavg1;
+      qicesum1(k,j,i,icrm)        = qicesum1(k,j,i,icrm)       /ntavg1;
+      qsnowsum1(k,j,i,icrm)       = qsnowsum1(k,j,i,icrm)      /ntavg1;
+      altsum1(k,j,i,icrm)         = altsum1(k,j,i,icrm)        /ntavg1;
+      ecppwwsum1(k,j,i,icrm)      = ecppwwsum1(k,j,i,icrm)     /ntavg1;
+      rhsum1(k,j,i,icrm)          = rhsum1(k,j,i,icrm)         /ntavg1;
       //printf("%s %d %d %d %d %d %.2f \n", "Liran check liran_test4davg 1:", crm_cnt(icrm),k,j,i,icrm,liran_test4d(k,j,i,icrm));
   });
 
@@ -1273,8 +1348,8 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                     ipr = PRN;
                 } 
                 // call cloud_prcp_check
-                printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,icl);
-                printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,ipr);
+                //printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,icl);
+                //printf("\nsetup_class_masks: bnd prcp up %d %d: ", k-1,ipr);
               }
             // Downward, or at least downward quiescent  
             } else if (maskdn(k,0)>0 || (maskqu(k)>0 && crm_wvel(k,j,i,icrm)<0)){  
@@ -1364,10 +1439,18 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
           for (int k=0; k<nz; k++) {
             // Get the cloud/prcp characteristics at cell center.
             // call cloud_prcp_check
-
+            if (maskcld(k) > 0 && maskclr(k) < 1) {
+                icl = CLD;
+            } else if (maskclr(k) > 0 && maskcld(k) < 1) {
+                icl = CLR;
+            } 
+            if (maskpry(k) > 0 && maskprn(k) < 1) {
+                ipr = PRY;
+            } else if (maskprn(k) > 0 && maskpry(k) < 1) {
+                ipr = PRN;
+            } 
             // Look at the bottom boundary first and determine it's
             // contribution to the cell center transport class.
-
             if (maskup(k,0)>0){
               itr = UP1 + maskup(k,0)-1; 
             } else if (maskdn(k,0)>0){  
@@ -1419,7 +1502,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
             } else {
               // call stop
             }
-/* Liran Note: Are those codes from 1360 to 1391 repeating? 
+/* 
     ! +++mhwang
     ! In the clear, and non-precipitating class, it is classified as quiescent class in the MMF simulation.
     ! If this is classed as updraft or downdraft in mode 16, this would lead to too much upraft and downdraft mass fluxes.
@@ -1543,18 +1626,18 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 // We now have enough information to aggregate the variables into domain
                 // averages by class. Do this first for the cell centers...
                 //if (iCL==CLR){
-                //  printf("\narea_cen_sum0: %d %d %d %d %d %d %d %.8f %.8f : ", k,j,i,icrm,iCL,iTR,iPR,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
+                //  printf("\narea_cen0: %d %d %d %d %d %d %d %.8f %.8f : ", k,j,i,icrm,iCL,iTR,iPR,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen(icrm,iPR,iTR,iCL,k));
                 //}
                 mask_tmp = mask_cen(k,j,i,icrm,iCL,iTR,iPR)/nxy;
                 area_cen_final(icrm,iPR,iTR,iCL,k) = area_cen_final(icrm,iPR,iTR,iCL,k) + mask_tmp;
-                area_cen_sum(icrm,iPR,iTR,iCL,k) = area_cen_sum(icrm,iPR,iTR,iCL,k) + mask_tmp;
+                area_cen(icrm,iPR,iTR,iCL,k) = area_cen(icrm,iPR,iTR,iCL,k) + mask_tmp;
                 //if (iCL==CLR){
-                //  printf("\narea_cen_sum : %d %d %d %d %d %d %d %.8f %.8f %.8f: ", k,j,i,icrm,iCL,iTR,iPR,mask_tmp,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen_sum(icrm,iPR,iTR,iCL,k));
+                //  printf("\narea_cen : %d %d %d %d %d %d %d %.8f %.8f %.8f: ", k,j,i,icrm,iCL,iTR,iPR,mask_tmp,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen(icrm,iPR,iTR,iCL,k));
                 //}
-                rh_cen_sum(icrm,iPR,iTR,iCL,k) = rh_cen_sum(icrm,iPR,iTR,iCL,k) + rhsum1(k,j,i,icrm) *mask_tmp;
-                qcloud_cen_sum(icrm,iPR,iTR,iCL,k) = qcloud_cen_sum(icrm,iPR,iTR,iCL,k) + qcloud(k,j,i,icrm)*mask_tmp;
-                qrain_cen_sum(icrm,iPR,iTR,iCL,k) = qrain_cen_sum(icrm,iPR,iTR,iCL,k) + qrloud(k,j,i,icrm)*mask_tmp;
-                qice_cen_sum(icrm,iPR,iTR,iCL,k) = qice_cen_sum(icrm,iPR,iTR,iCL,k) + qiloud(k,j,i,icrm)*mask_tmp;
+                rh_cen(icrm,iPR,iTR,iCL,k) = rh_cen(icrm,iPR,iTR,iCL,k) + rhsum1(k,j,i,icrm) *mask_tmp;
+                qcloud_cen(icrm,iPR,iTR,iCL,k) = qcloud_cen(icrm,iPR,iTR,iCL,k) + qcloud(k,j,i,icrm)*mask_tmp;
+                qrain_cen(icrm,iPR,iTR,iCL,k) = qrain_cen(icrm,iPR,iTR,iCL,k) + qrloud(k,j,i,icrm)*mask_tmp;
+                qice_cen(icrm,iPR,iTR,iCL,k) = qice_cen(icrm,iPR,iTR,iCL,k) + qiloud(k,j,i,icrm)*mask_tmp;
                 // This list is not complete! 
                 // ! calculate the mean vertical velocity over the quiescent class  +++mhwang
                 if(iTR==QUI){
@@ -1578,14 +1661,14 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
                 wwrho_km1 = 0.5*(1.0/altsum1(km2,j,i,icrm) + 1.0/altsum1(km1,j,i,icrm))*crm_wvel(km1,j,i,icrm);
                 testgt0 = std::max(0.0,wwrho_k-wwrho_km1);
                 //if (iCL==CLR){
-                //  printf("\narea_bnd_sum 0: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
+                //  printf("\narea_bnd 0: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd(icrm,iPR,iTR,iCL,k));
                 //}
-                area_bnd_sum(icrm,iPR,iTR,iCL,k) = area_bnd_sum(icrm,iPR,iTR,iCL,k) + mask_tmp;
+                area_bnd(icrm,iPR,iTR,iCL,k) = area_bnd(icrm,iPR,iTR,iCL,k) + mask_tmp;
                 //if (iCL==CLR){
-                //  printf("\narea_bnd_sum 1: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd_sum(icrm,iPR,iTR,iCL,k));
+                //  printf("\narea_bnd 1: %d %d %d %d %d %.8f %.8f : ", icrm,iPR,iTR,iCL,k,mask_tmp,area_bnd(icrm,iPR,iTR,iCL,k));
                 //}
-                mass_bnd_sum(icrm,iPR,iTR,iCL,k) = mass_bnd_sum(icrm,iPR,iTR,iCL,k) + wwrho_k*mask_tmp;
-                ent_bnd_sum(icrm,iPR,iTR,iCL,k) = ent_bnd_sum(icrm,iPR,iTR,iCL,k) + testgt0*mask_tmp;
+                mass_bnd(icrm,iPR,iTR,iCL,k) = mass_bnd(icrm,iPR,iTR,iCL,k) + wwrho_k*mask_tmp;
+                ent_bnd(icrm,iPR,iTR,iCL,k) = ent_bnd(icrm,iPR,iTR,iCL,k) + testgt0*mask_tmp;
                 // ! calculate the mean vertical velocity over the quiescent class  +++mhwang
                 if(iTR==QUI){
                   wwqui_bar_bnd(k,icrm) = wwqui_bar_bnd(k,icrm)+(crm_wvel(k,j,i,icrm))*mask_tmp;
@@ -1661,14 +1744,14 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 /*
               ! calculate the vertical velocity variance over the quiescent class  +++mhwang
               ! wwqui_bar_cen is used in for both all sky and cloudy sky.
-              ! when wwqui_cloudy_bar_cen was used for cloudy sky, wwqui_cloudy_cen_sum will be smaller than wwqui_cen_sum.
+              ! when wwqui_cloudy_bar_cen was used for cloudy sky, wwqui_cloudy_cen will be smaller than wwqui_cen.
               !
 */
               tempwork = ((crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5-wwqui_bar_cen(k,icrm));
-              wwqui_cen_sum(k,icrm) = wwqui_cen_sum(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
+              wwqui_cen(k,icrm) = wwqui_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
               if(iCL==CLD){
                 tempwork = ((crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5-wwqui_bar_cen(k,icrm));
-                wwqui_cloudy_cen_sum(k,icrm)=wwqui_cloudy_cen_sum(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
+                wwqui_cloudy_cen(k,icrm)=wwqui_cloudy_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
               } // if(icl==CLD)
             } // end of for (int k=0
 
@@ -1682,14 +1765,14 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 /*
               ! calculate the mean vertical velocity over the quiescent class  +++mhwang
               ! wwqui_bar_bnd is used in both all sky and cloudy sky.
-              ! when wwqui_cloudy_bar_bnd was used for cloudy sky, wwqui_cloudy_bnd_sum will be smaller than wwqui_bnd_sum.
+              ! when wwqui_cloudy_bar_bnd was used for cloudy sky, wwqui_cloudy_bnd will be smaller than wwqui_bnd.
               !
 */
               tempwork = (crm_wvel(k,j,i,icrm)-wwqui_bar_cen(k,icrm));
-              wwqui_bnd_sum(k,icrm) = wwqui_bnd_sum(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm)) * 0.5/3.0;
+              wwqui_bnd(k,icrm) = wwqui_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm)) * 0.5/3.0;
               if(iCL==CLD){
                 tempwork = (crm_wvel(k,j,i,icrm)-wwqui_bar_cen(k,icrm));
-                wwqui_cloudy_bnd_sum(k,icrm)=wwqui_cloudy_bnd_sum(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm))* 0.5/3.0;
+                wwqui_cloudy_bnd(k,icrm)=wwqui_cloudy_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm))* 0.5/3.0;
               } // if(icl==CLD)
             } // for (int k = 1; k < nzstag; ++k)  
           } // end of for (int iPR=0
@@ -1708,7 +1791,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
         }
       }
       if (temp_area_cen < 1.0e-3){
-        printf("%s %.2f\n", "ecpp, area_cen_final, quiescent", temp_area_cen);
+        //printf("%s %.2f\n", "ecpp, area_cen_final, quiescent", temp_area_cen);
       }
     } // end of for (int k=0
 // ==============================End of call categorization_stats============
@@ -1719,22 +1802,36 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       ! if it is not the last block of time in ntavg2
 */    
 
-  wwqui_bar_cen                 .deep_copy_to( ecpp_output_wwqui_cen               );
-  wwqui_cloudy_bar_cen          .deep_copy_to( ecpp_output_wwqui_cloudy_cen        );
-  wwqui_bar_bnd                 .deep_copy_to( ecpp_output_wwqui_bnd               );
-  wwqui_cloudy_bar_bnd          .deep_copy_to( ecpp_output_wwqui_cloudy_bnd        );
-  area_cen_sum                  .deep_copy_to( ecpp_output_acen                    );
-  area_bnd_sum                  .deep_copy_to( ecpp_output_abnd                    );
-  area_cen_final                .deep_copy_to( ecpp_output_acen_tf                 );
-  area_bnd_final                .deep_copy_to( ecpp_output_abnd_tf                 );
-  mass_bnd_sum                  .deep_copy_to( ecpp_output_massflxbnd              );
-  rh_cen_sum                    .deep_copy_to( ecpp_output_rhcen                   );
-  qcloud_cen_sum                .deep_copy_to( ecpp_output_qcloudcen               );
-  qicesum1                      .deep_copy_to( ecpp_output_qlsinkcen               );
-  qrainsum1                     .deep_copy_to( ecpp_output_precrcen                );
-  qsnowsum1                     .deep_copy_to( ecpp_output_precsolidcen            );
-  acldy_cen_tbeg                .deep_copy_to( ecpp_output_tbeg                    );
+  parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+    for (int k=0; k<nz; k++) {
+      ecpp_sum_wwqui_bar_cen(k,icrm)        = ecpp_sum_wwqui_bar_cen(k,icrm)        + wwqui_bar_cen(k,icrm);
+      ecpp_sum_wwqui_cloudy_bar_cen(k,icrm) = ecpp_sum_wwqui_cloudy_bar_cen(k,icrm) + wwqui_cloudy_bar_cen(k,icrm);
+      ecpp_sum_wwqui_bar_bnd(k,icrm)        = ecpp_sum_wwqui_bar_bnd(k,icrm)       + wwqui_bar_bnd(k,icrm);
+      ecpp_sum_wwqui_cloudy_bar_bnd(k,icrm) = ecpp_sum_wwqui_cloudy_bar_bnd(k,icrm) + wwqui_cloudy_bar_bnd(k,icrm);
+      ecpp_sum_tbeg(k,icrm)                 =  ecpp_sum_tbeg(k,icrm)                + acldy_cen_tbeg(k,icrm);
+    }
 
+    for (int iCL=0; iCL<NCLASS_CL; iCL++) {
+      for (int iTR=0; iTR<ndraft_max; iTR++) {
+        for (int iPR=0; iPR<NCLASS_PR; iPR++) {
+          for (int k=0; k<nz; k++) {
+            ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k)        =  ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k)      + area_cen(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_area_bnd(icrm,iPR,iTR,iCL,k)        =  ecpp_sum_area_bnd(icrm,iPR,iTR,iCL,k)      + area_bnd(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_area_cen_final(icrm,iPR,iTR,iCL,k)  =  ecpp_sum_area_cen_final(icrm,iPR,iTR,iCL,k) + area_cen_final(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_area_bnd_final(icrm,iPR,iTR,iCL,k)  =  ecpp_sum_area_bnd_final(icrm,iPR,iTR,iCL,k) + area_bnd_final(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_mass_bnd(icrm,iPR,iTR,iCL,k)        =  ecpp_sum_mass_bnd(icrm,iPR,iTR,iCL,k)      + mass_bnd(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_rh_cen(icrm,iPR,iTR,iCL,k)          =  ecpp_sum_rh_cen(icrm,iPR,iTR,iCL,k)        + rh_cen(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_qcloud_cen(icrm,iPR,iTR,iCL,k)      =  ecpp_sum_qcloud_cen(icrm,iPR,iTR,iCL,k)    + qcloud_cen(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_qice_cen(icrm,iPR,iTR,iCL,k)        =  ecpp_sum_qice_cen(icrm,iPR,iTR,iCL,k)      + qice_cen(icrm,iPR,iTR,iCL,k);
+            ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)    =  ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)  + qrain_cen(icrm,iPR,iTR,iCL,k);
+            
+          }
+        }
+      }
+    }
+    crm_level2_cnt(icrm) = crm_level2_cnt(icrm) + 1;
+  }); //end of parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) 
+  printf("\nLevel 1: Value of crm_level2_cnt: %d: ", crm_level2_cnt(0));
 
   // Done with time level one averages so zero them out for next period.
   parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
@@ -1751,7 +1848,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 
 
 printf("\nLiran check start ECPP ecpp_crm_stat 04\n");
-} // if (runcount >=ntavg1 && runcount % ntavg1 == 0)   ----------------------------------------------------------------
+} // if (runcount >=ntavg1 && runcount % ntavg1 == 0)   --------------end of level 1 averaging-----------------------
 
 // ============================== End of time level one averaging period ======
 
@@ -1765,41 +1862,124 @@ if (runcount >=ntavg2 && runcount % ntavg2 == 0){
       ! of calls to categorization_stats during the level 2 averaging period,
       ! which increment the bnd/cen arrays.
 */
+  printf("\nLiran check start level2 averaging 00\n");
+  printf("\nLevel2 Value of crm_level2_cnt: %d: ", crm_level2_cnt(0));
+  
+  parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
+    ecpp_sum_wwqui_bar_cen(k_crm,icrm)        = ecpp_sum_wwqui_bar_cen(k_crm,icrm)     /crm_level2_cnt(icrm);
+    ecpp_sum_wwqui_cloudy_cen(k_crm,icrm)  = ecpp_sum_wwqui_cloudy_cen(k_crm,icrm)/crm_level2_cnt(icrm);
+    ecpp_sum_tbeg(k_crm,icrm)              = ecpp_sum_tbeg(k_crm,icrm) /crm_level2_cnt(icrm);
+  });
+  printf("\nLiran check start level2 averaging 01\n");
+  parallel_for( SimpleBounds<2>(nzi,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
+    ecpp_sum_wwqui_bnd(k_crm,icrm)         = ecpp_sum_wwqui_bnd(k_crm,icrm)       /crm_level2_cnt(icrm);
+    ecpp_sum_wwqui_cloudy_bnd(k_crm,icrm)  = ecpp_sum_wwqui_cloudy_bnd(k_crm,icrm)/crm_level2_cnt(icrm);
+  });
 
+  printf("\nLiran check start level2 averaging 02\n");
+  parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+    ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_acen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+  });
+  printf("\nLiran check start level2 averaging 03\n");
+  parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+    ecpp_sum_abnd(icrm,iPR,iTR,iCL,k)         = ecpp_sum_abnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_abnd_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_abnd_tf(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_sum_massflxbnd(icrm,iPR,iTR,iCL,k)   = ecpp_sum_massflxbnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+  });
+printf("\nLiran check start level2 averaging 04\n");
+/*
+! get in-cloud value for rh, qcloud, qrain, qice, qsnow, qgraup,
+! percr, precsolid, and precall. (qlsink is already in-cloud values)
+*/
+  parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+    if (ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) >afrac_cut){
+      ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_acen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+    } else {
+      ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = 0.0;
+      ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = 0.0;
+      ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = 0.0;
+      ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = 0.0;
+      ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = 0.0;
+      ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = 0.0;    }  
+  });
+  printf("\nLiran check start level2 averaging 05\n");
 
-  //parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
+  printf("\nLiran check end level2 averaging\n");
 
-  //});
 } // end of if (runcount >=ntavg2 && runcount % ntavg2 == 0)
 
 }
 
-inline void cloud_prcp_check(const std::vector<int>& mask1, const std::vector<int>& mask2, 
-                      int flag1, int flag2, int k, int& iout, const std::string& msg = "") {
-    /*
-  !------------------------------------------------------------------------  
-  ! Assigns the flag associated with the mask value that is true to the
-  ! output index. The masks are assumed to be 1-D arrays and k is the
-  ! position in the array to check.
-  ! William.Gustafson@pnl.gov; 11-Sep-2008
-  !------------------------------------------------------------------------
-    */
-    int n = mask1.size();
-
-    // Sanity check
-    if (k < 1 || k > n) {
-        std::cerr << "cloud_prcp_check: k =" << k << " n =" << n << std::endl;
-        throw std::runtime_error("ERROR: k out of bounds in cloud_prcp_check");
-    }
-
-    // Whichever mask has the value 1 has the associated flag put into iout
-    if (mask1[k] > 0 && mask2[k] < 1) {
-        iout = flag1;
-    } else if (mask2[k] > 0 && mask1[k] < 1) {
-        iout = flag2;
-    } else {
-        std::cerr << "cloud_prcp_check: k =" << k << std::endl;
-        throw std::runtime_error("ERROR: neither mask dominates in cloud_prcp_check");
-    }
+inline void pam_ecpp_copy_to_host( pam::PamCoupler &coupler ) {
+  using yakl::c::parallel_for;
+  using yakl::c::SimpleBounds;
+  using yakl::atomicAdd;
+  printf("\nLiran check pam_ecpp_copy_to_host 0\n");
+  auto &dm_device = coupler.get_data_manager_device_readwrite();
+  auto &dm_host   = coupler.get_data_manager_host_readwrite();
+  //------------------------------------------------------------------------------------------------
+  auto nens            = coupler.get_option<int>("ncrms");    // Note that nz   = crm_nz
+  auto nz              = coupler.get_option<int>("crm_nz");
+  auto NCLASS_CL     = coupler.get_option<int>("ecpp_NCLASS_CL");
+  auto ndraft_max    = coupler.get_option<int>("ecpp_ndraft_max");
+  auto NCLASS_PR     = coupler.get_option<int>("ecpp_NCLASS_PR");
+  auto ecpp_output_wwqui_cen         = dm_host.get<real,2>("ecpp_output_wwqui_cen");
+  auto ecpp_output_wwqui_cloudy_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_cen");
+  auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
+  auto ecpp_output_wwqui_cloudy_bnd  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_bnd");
+  auto ecpp_output_acen              = dm_host.get<real,5>("ecpp_output_acen");
+  auto ecpp_output_abnd              = dm_host.get<real,5>("ecpp_output_abnd");
+  auto ecpp_output_acen_tf           = dm_host.get<real,5>("ecpp_output_acen_tf");
+  auto ecpp_output_abnd_tf           = dm_host.get<real,5>("ecpp_output_abnd_tf");
+  auto ecpp_output_massflxbnd        = dm_host.get<real,5>("ecpp_output_massflxbnd");
+  auto ecpp_output_rhcen             = dm_host.get<real,5>("ecpp_output_rhcen");
+  auto ecpp_output_qcloudcen         = dm_host.get<real,5>("ecpp_output_qcloudcen");
+  auto ecpp_output_qlsinkcen         = dm_host.get<real,5>("ecpp_output_qlsinkcen");
+  auto ecpp_output_precrcen          = dm_host.get<real,5>("ecpp_output_precrcen");
+  auto ecpp_output_precsolidcen      = dm_host.get<real,5>("ecpp_output_precsolidcen");
+  auto ecpp_output_tbeg              = dm_host.get<real,2>("ecpp_output_tbeg");
+  auto crm_level2_cnt                = dm_device.get<int,1>("crm_level2_cnt");
+  auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
+  auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
+  auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
+  auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
+  auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
+  auto ecpp_sum_area_cen          = dm_device.get<real,5>("ecpp_sum_area_cen");
+  auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
+  auto ecpp_sum_area_bnd          = dm_device.get<real,5>("ecpp_sum_area_bnd");
+  auto ecpp_sum_mass_bnd          = dm_device.get<real,5>("ecpp_sum_mass_bnd");
+  auto ecpp_sum_rh_cen            = dm_device.get<real,5>("ecpp_sum_rh_cen");
+  auto ecpp_sum_qcloud_cen        = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
+  auto ecpp_sum_qice_cen          = dm_device.get<real,5>("ecpp_sum_qice_cen");
+  //------------------------------------------------------------------------------------------------
+  //------------------------------------------------------------------------------------------------
+  // Copy the CRM ECPP state to host arrays
+  ecpp_sum_wwqui_bar_cen             .deep_copy_to( ecpp_output_wwqui_cen               );
+  ecpp_sum_wwqui_cloudy_cen          .deep_copy_to( ecpp_output_wwqui_cloudy_cen        );
+  ecpp_sum_wwqui_bnd                 .deep_copy_to( ecpp_output_wwqui_bnd               );
+  ecpp_sum_wwqui_cloudy_bnd          .deep_copy_to( ecpp_output_wwqui_cloudy_bnd        );
+  ecpp_sum_acen                      .deep_copy_to( ecpp_output_acen                    );
+  ecpp_sum_abnd                      .deep_copy_to( ecpp_output_abnd                    );
+  ecpp_sum_acen_tf                   .deep_copy_to( ecpp_output_acen_tf                 );
+  ecpp_sum_abnd_tf                   .deep_copy_to( ecpp_output_abnd_tf                 );
+  ecpp_sum_massflxbnd                .deep_copy_to( ecpp_output_massflxbnd              );
+  ecpp_sum_rhcen                     .deep_copy_to( ecpp_output_rhcen                   );
+  ecpp_sum_qcloudcen                 .deep_copy_to( ecpp_output_qcloudcen               );
+  ecpp_sum_qlsinkcen                 .deep_copy_to( ecpp_output_qlsinkcen               );
+  ecpp_sum_precrcen                  .deep_copy_to( ecpp_output_precrcen                );
+  ecpp_sum_precsolidcen              .deep_copy_to( ecpp_output_precsolidcen            );
+  ecpp_sum_tbeg                      .deep_copy_to( ecpp_output_tbeg                    );
+  printf("\nLiran check pam_ecpp_copy_to_host 5\n");
+  yakl::fence();
+  //------------------------------------------------------------------------------------------------
 }
-

@@ -199,21 +199,35 @@ dm_device.register_and_allocate<real>("wdown_stddev_k", "<description>", {nz,nen
 dm_device.register_and_allocate<real>("wup_stddev_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_k", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_k", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_cen", "<description>", {nz,nens}, {"z","nens"});
-dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cloudy_bar_cen", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("wup_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
 dm_device.register_and_allocate<real>("wdown_rms_ksmo", "<description>", {nzi,nens}, {"zi","nens"});
+
+dm_device.register_and_allocate<real>("ecpp_cat_wwqui_bar_cen", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_cat_wwqui_cloudy_bar_cen", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_cat_tbeg", "<description>",  {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_cat_wwqui_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
+dm_device.register_and_allocate<real>("ecpp_cat_wwqui_cloudy_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
+dm_device.register_and_allocate<real>("ecpp_cat_area_cen_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_area_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_rh_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_qcloud_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_qice_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_precsolidcen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
+dm_device.register_and_allocate<real>("ecpp_cat_area_bnd_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+dm_device.register_and_allocate<real>("ecpp_cat_area_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+dm_device.register_and_allocate<real>("ecpp_cat_mass_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
+
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_cen", "<description>", {nz,nens}, {"z","nens"});
+dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cloudy_bar_cen", "<description>", {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("ecpp_sum_tbeg", "<description>",  {nz,nens}, {"z","nens"});
 dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
 dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cloudy_bar_bnd", "<description>", {nzi,nens}, {"zi","nens"});
-
 dm_device.register_and_allocate<real>("ecpp_sum_area_cen_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
 dm_device.register_and_allocate<real>("ecpp_sum_area_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
 dm_device.register_and_allocate<real>("ecpp_sum_rh_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
 dm_device.register_and_allocate<real>("ecpp_sum_qcloud_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
 dm_device.register_and_allocate<real>("ecpp_sum_qice_cen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
 dm_device.register_and_allocate<real>("ecpp_sum_precsolidcen", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","z"});
-
 dm_device.register_and_allocate<real>("ecpp_sum_area_bnd_final", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
 dm_device.register_and_allocate<real>("ecpp_sum_area_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
 dm_device.register_and_allocate<real>("ecpp_sum_mass_bnd", "<description>", {nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi}, {"nens","NCLASS_PR","ndraft_max","NCLASS_CL","zi"});
@@ -302,14 +316,15 @@ auto liran_test2d         = dm_device.get<real,2>("liran_test2d");
 auto cldtot2d             = dm_device.get<real,2>("cldtot2d");
 auto wwqui_cloudy_cen     = dm_device.get<real,2>("wwqui_cloudy_cen");
 auto wwqui_cloudy_bnd     = dm_device.get<real,2>("wwqui_cloudy_bnd");
+
 auto ecpp_output_wwqui_cen         = dm_host.get<real,2>("ecpp_output_wwqui_cen");
 auto ecpp_output_wwqui_cloudy_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_cen");
 auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
 auto ecpp_output_wwqui_cloudy_bnd  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_bnd");
 
 auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
-auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
 auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
+auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
 auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
 auto ecpp_sum_tbeg                  = dm_device.get<real,2>("ecpp_sum_tbeg");
 auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
@@ -321,6 +336,21 @@ auto ecpp_sum_rh_cen                = dm_device.get<real,5>("ecpp_sum_rh_cen");
 auto ecpp_sum_qcloud_cen            = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
 auto ecpp_sum_qice_cen              = dm_device.get<real,5>("ecpp_sum_qice_cen");
 auto ecpp_sum_precsolidcen          = dm_device.get<real,5>("ecpp_sum_precsolidcen");
+
+auto ecpp_cat_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_cen");
+auto ecpp_cat_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_bnd");
+auto ecpp_cat_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_cen");
+auto ecpp_cat_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_bnd");
+auto ecpp_cat_tbeg                  = dm_device.get<real,2>("ecpp_cat_tbeg");
+auto ecpp_cat_area_cen_final        = dm_device.get<real,5>("ecpp_cat_area_cen_final");
+auto ecpp_cat_area_cen              = dm_device.get<real,5>("ecpp_cat_area_cen");
+auto ecpp_cat_area_bnd_final        = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
+auto ecpp_cat_area_bnd              = dm_device.get<real,5>("ecpp_cat_area_bnd");
+auto ecpp_cat_mass_bnd              = dm_device.get<real,5>("ecpp_cat_mass_bnd");
+auto ecpp_cat_rh_cen                = dm_device.get<real,5>("ecpp_cat_rh_cen");
+auto ecpp_cat_qcloud_cen            = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
+auto ecpp_cat_qice_cen              = dm_device.get<real,5>("ecpp_cat_qice_cen");
+auto ecpp_cat_precsolidcen          = dm_device.get<real,5>("ecpp_cat_precsolidcen");
 
 //auto wwqui_cloudy_bnd = dm_device.get<real,2>("wwqui_cloudy_bnd");     // Note: Adjust dimensionality if needed
 //auto wup_thresh           = dm_device.get<real,2>("wup_thresh");               // Note: Adjust dimensionality if needed
@@ -372,6 +402,9 @@ parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
   wwqui_cloudy_cen(iz,iens)               = 0;
   ecpp_output_wwqui_cen(iz,iens)          = 0;
   ecpp_output_wwqui_cloudy_cen(iz,iens)   = 0;
+  ecpp_cat_wwqui_bar_cen(iz,iens)         = 0;
+  ecpp_cat_wwqui_cloudy_bar_cen(iz,iens)  = 0;
+  ecpp_cat_tbeg(iz,iens)                  = 0;
   ecpp_sum_wwqui_bar_cen(iz,iens)         = 0;
   ecpp_sum_wwqui_cloudy_bar_cen(iz,iens)  = 0;
   ecpp_sum_tbeg(iz,iens)                  = 0;
@@ -384,11 +417,22 @@ parallel_for(SimpleBounds<2>(nzi,nens), YAKL_LAMBDA (int iz, int iens) {
   wdown_rms_ksmo(iz,iens)                 = 0;
   ecpp_output_wwqui_bnd(iz,iens)          = 0;
   ecpp_output_wwqui_cloudy_bnd(iz,iens)   = 0;
+  ecpp_cat_wwqui_bar_bnd(iz,iens)         = 0;
+  ecpp_cat_wwqui_cloudy_bar_bnd(iz,iens)  = 0;
   ecpp_sum_wwqui_bar_bnd(iz,iens)         = 0;
   ecpp_sum_wwqui_cloudy_bar_bnd(iz,iens)  = 0;
 });
 
 parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+  ecpp_cat_area_cen_final(icrm,iPR,iTR,iCL,k) = 0;
+  ecpp_cat_area_cen(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_cat_area_bnd_final(icrm,iPR,iTR,iCL,k) = 0;
+  ecpp_cat_area_bnd(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_cat_mass_bnd(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_cat_rh_cen(icrm,iPR,iTR,iCL,k)         = 0;
+  ecpp_cat_qcloud_cen(icrm,iPR,iTR,iCL,k)     = 0;
+  ecpp_cat_qice_cen(icrm,iPR,iTR,iCL,k)       = 0;
+  ecpp_cat_precsolidcen(icrm,iPR,iTR,iCL,k)   = 0;
   ecpp_sum_area_cen_final(icrm,iPR,iTR,iCL,k) = 0;
   ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k)       = 0;
   ecpp_sum_area_bnd_final(icrm,iPR,iTR,iCL,k) = 0;
@@ -520,7 +564,6 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
   auto ecpp_output_wwqui_cloudy_bnd  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_bnd");
   auto ecpp_output_tbeg              = dm_host.get<real,2>("ecpp_output_tbeg");
-printf("Liran check start ECPP stage4:\n");
   auto ecpp_output_acen              = dm_host.get<real,5>("ecpp_output_acen");
   auto ecpp_output_abnd              = dm_host.get<real,5>("ecpp_output_abnd");
   auto ecpp_output_acen_tf           = dm_host.get<real,5>("ecpp_output_acen_tf");
@@ -532,22 +575,35 @@ printf("Liran check start ECPP stage4:\n");
   auto ecpp_output_precrcen          = dm_host.get<real,5>("ecpp_output_precrcen");
   auto ecpp_output_precsolidcen      = dm_host.get<real,5>("ecpp_output_precsolidcen");
   
-printf("Liran check start ECPP stage5:\n");
   auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
-  auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
   auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
+  auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
   auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
-
+  auto ecpp_sum_tbeg                  = dm_device.get<real,2>("ecpp_sum_tbeg");
   auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
   auto ecpp_sum_area_cen              = dm_device.get<real,5>("ecpp_sum_area_cen");
   auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
-  auto ecpp_sum_area_bnd          = dm_device.get<real,5>("ecpp_sum_area_bnd");
-  auto ecpp_sum_mass_bnd          = dm_device.get<real,5>("ecpp_sum_mass_bnd");
-  auto ecpp_sum_rh_cen            = dm_device.get<real,5>("ecpp_sum_rh_cen");
-  auto ecpp_sum_qcloud_cen        = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
-  auto ecpp_sum_qice_cen          = dm_device.get<real,5>("ecpp_sum_qice_cen");
-  auto ecpp_sum_precsolidcen      = dm_device.get<real,5>("ecpp_sum_precsolidcen");
-  auto ecpp_sum_tbeg              = dm_device.get<real,2>("ecpp_sum_tbeg");
+  auto ecpp_sum_area_bnd              = dm_device.get<real,5>("ecpp_sum_area_bnd");
+  auto ecpp_sum_mass_bnd              = dm_device.get<real,5>("ecpp_sum_mass_bnd");
+  auto ecpp_sum_rh_cen                = dm_device.get<real,5>("ecpp_sum_rh_cen");
+  auto ecpp_sum_qcloud_cen            = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
+  auto ecpp_sum_qice_cen              = dm_device.get<real,5>("ecpp_sum_qice_cen");
+  auto ecpp_sum_precsolidcen          = dm_device.get<real,5>("ecpp_sum_precsolidcen");  
+printf("Liran check start ECPP stage5:\n");
+  auto ecpp_cat_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_cen");
+  auto ecpp_cat_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_bnd");
+  auto ecpp_cat_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_cen");
+  auto ecpp_cat_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_bnd");
+  auto ecpp_cat_area_cen_final        = dm_device.get<real,5>("ecpp_cat_area_cen_final");
+  auto ecpp_cat_area_cen              = dm_device.get<real,5>("ecpp_cat_area_cen");
+  auto ecpp_cat_area_bnd_final        = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
+  auto ecpp_cat_area_bnd              = dm_device.get<real,5>("ecpp_cat_area_bnd");
+  auto ecpp_cat_mass_bnd              = dm_device.get<real,5>("ecpp_cat_mass_bnd");
+  auto ecpp_cat_rh_cen                = dm_device.get<real,5>("ecpp_cat_rh_cen");
+  auto ecpp_cat_qcloud_cen            = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
+  auto ecpp_cat_qice_cen              = dm_device.get<real,5>("ecpp_cat_qice_cen");
+  auto ecpp_cat_precsolidcen          = dm_device.get<real,5>("ecpp_cat_precsolidcen");
+  auto ecpp_cat_tbeg                  = dm_device.get<real,2>("ecpp_cat_tbeg");
   // Get values from PAM cloud fields
   auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk");
   auto host_state_shoc_tkh      = dm_host.get<real,4>("state_shoc_tkh");
@@ -1866,30 +1922,30 @@ if (runcount >=ntavg2 && runcount % ntavg2 == 0){
   printf("\nLevel2 Value of crm_level2_cnt: %d: ", crm_level2_cnt(0));
   
   parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
-    ecpp_sum_wwqui_bar_cen(k_crm,icrm)        = ecpp_sum_wwqui_bar_cen(k_crm,icrm)     /crm_level2_cnt(icrm);
-    ecpp_sum_wwqui_cloudy_cen(k_crm,icrm)  = ecpp_sum_wwqui_cloudy_cen(k_crm,icrm)/crm_level2_cnt(icrm);
-    ecpp_sum_tbeg(k_crm,icrm)              = ecpp_sum_tbeg(k_crm,icrm) /crm_level2_cnt(icrm);
+    ecpp_cat_wwqui_bar_cen(k_crm,icrm)         = ecpp_sum_wwqui_bar_cen(k_crm,icrm)     /crm_level2_cnt(icrm);
+    ecpp_cat_wwqui_cloudy_bar_cen(k_crm,icrm)  = ecpp_sum_wwqui_cloudy_bar_cen(k_crm,icrm)/crm_level2_cnt(icrm);
+    ecpp_cat_tbeg(k_crm,icrm)                  = ecpp_sum_tbeg(k_crm,icrm) /crm_level2_cnt(icrm);
   });
   printf("\nLiran check start level2 averaging 01\n");
   parallel_for( SimpleBounds<2>(nzi,nens) , YAKL_LAMBDA (int k_crm, int icrm) {
-    ecpp_sum_wwqui_bnd(k_crm,icrm)         = ecpp_sum_wwqui_bnd(k_crm,icrm)       /crm_level2_cnt(icrm);
-    ecpp_sum_wwqui_cloudy_bnd(k_crm,icrm)  = ecpp_sum_wwqui_cloudy_bnd(k_crm,icrm)/crm_level2_cnt(icrm);
+    ecpp_cat_wwqui_bar_bnd(k_crm,icrm)             = ecpp_sum_wwqui_bar_bnd(k_crm,icrm)       /crm_level2_cnt(icrm);
+    ecpp_cat_wwqui_cloudy_bar_bnd(k_crm,icrm)      = ecpp_sum_wwqui_cloudy_bar_bnd(k_crm,icrm)/crm_level2_cnt(icrm);
   });
 
   printf("\nLiran check start level2 averaging 02\n");
   parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
-    ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_acen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_area_cen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_area_cen_final(icrm,iPR,iTR,iCL,k)   = ecpp_sum_area_cen_final(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_rh_cen(icrm,iPR,iTR,iCL,k)           = ecpp_sum_rh_cen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_qcloud_cen(icrm,iPR,iTR,iCL,k)       = ecpp_sum_qcloud_cen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_qice_cen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_qice_cen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_precsolidcen(icrm,iPR,iTR,iCL,k)     = ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
   });
   printf("\nLiran check start level2 averaging 03\n");
   parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
-    ecpp_sum_abnd(icrm,iPR,iTR,iCL,k)         = ecpp_sum_abnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_abnd_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_abnd_tf(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
-    ecpp_sum_massflxbnd(icrm,iPR,iTR,iCL,k)   = ecpp_sum_massflxbnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_area_bnd(icrm,iPR,iTR,iCL,k)         = ecpp_sum_area_bnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_area_bnd_final(icrm,iPR,iTR,iCL,k)   = ecpp_sum_area_bnd_final(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
+    ecpp_cat_mass_bnd(icrm,iPR,iTR,iCL,k)         = ecpp_sum_mass_bnd(icrm,iPR,iTR,iCL,k)/crm_level2_cnt(icrm);
   });
 printf("\nLiran check start level2 averaging 04\n");
 /*
@@ -1898,22 +1954,32 @@ printf("\nLiran check start level2 averaging 04\n");
 */
   parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nz), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
     if (ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) >afrac_cut){
-      ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = ecpp_sum_acen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
-      ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
-      ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
-      ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
-      ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
-      ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_area_cen(icrm,iPR,iTR,iCL,k)            = ecpp_cat_area_cen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_area_cen_final(icrm,iPR,iTR,iCL,k)      = ecpp_cat_area_cen_final(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_rh_cen(icrm,iPR,iTR,iCL,k)              = ecpp_cat_rh_cen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_qcloud_cen(icrm,iPR,iTR,iCL,k)          = ecpp_cat_qcloud_cen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_qice_cen(icrm,iPR,iTR,iCL,k)            = ecpp_cat_qice_cen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_precsolidcen(icrm,iPR,iTR,iCL,k)        = ecpp_cat_precsolidcen(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
     } else {
-      ecpp_sum_acen(icrm,iPR,iTR,iCL,k)         = 0.0;
-      ecpp_sum_acen_tf(icrm,iPR,iTR,iCL,k)      = 0.0;
-      ecpp_sum_rhcen(icrm,iPR,iTR,iCL,k)        = 0.0;
-      ecpp_sum_qcloudcen(icrm,iPR,iTR,iCL,k)    = 0.0;
-      ecpp_sum_qlsinkcen(icrm,iPR,iTR,iCL,k)    = 0.0;
-      ecpp_sum_precsolidcen(icrm,iPR,iTR,iCL,k) = 0.0;    }  
+      ecpp_cat_area_cen(icrm,iPR,iTR,iCL,k)            = 0.0;
+      ecpp_cat_area_cen_final(icrm,iPR,iTR,iCL,k)      = 0.0;
+      ecpp_cat_rh_cen(icrm,iPR,iTR,iCL,k)              = 0.0;
+      ecpp_cat_qcloud_cen(icrm,iPR,iTR,iCL,k)          = 0.0;
+      ecpp_cat_qice_cen(icrm,iPR,iTR,iCL,k)            = 0.0;
+      ecpp_cat_precsolidcen(icrm,iPR,iTR,iCL,k)        = 0.0;    }  
   });
   printf("\nLiran check start level2 averaging 05\n");
-
+  parallel_for(SimpleBounds<5>(nens,NCLASS_PR,ndraft_max,NCLASS_CL,nzi), YAKL_LAMBDA (int icrm,int iPR,int iTR,int iCL,int k) {
+    if (ecpp_sum_area_bnd(icrm,iPR,iTR,iCL,k) >afrac_cut){
+      ecpp_cat_area_bnd(icrm,iPR,iTR,iCL,k)            = ecpp_cat_area_bnd(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_area_bnd_final(icrm,iPR,iTR,iCL,k)      = ecpp_cat_area_bnd_final(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+      ecpp_cat_mass_bnd(icrm,iPR,iTR,iCL,k)            = ecpp_cat_mass_bnd(icrm,iPR,iTR,iCL,k)/ecpp_sum_area_cen(icrm,iPR,iTR,iCL,k) ;
+    } else {
+      ecpp_cat_area_bnd(icrm,iPR,iTR,iCL,k)            = 0.0;
+      ecpp_cat_area_bnd_final(icrm,iPR,iTR,iCL,k)      = 0.0;
+      ecpp_cat_mass_bnd(icrm,iPR,iTR,iCL,k)            = 0.0;
+    }  
+  });
   printf("\nLiran check end level2 averaging\n");
 
 } // end of if (runcount >=ntavg2 && runcount % ntavg2 == 0)
@@ -1948,37 +2014,38 @@ inline void pam_ecpp_copy_to_host( pam::PamCoupler &coupler ) {
   auto ecpp_output_precrcen          = dm_host.get<real,5>("ecpp_output_precrcen");
   auto ecpp_output_precsolidcen      = dm_host.get<real,5>("ecpp_output_precsolidcen");
   auto ecpp_output_tbeg              = dm_host.get<real,2>("ecpp_output_tbeg");
-  auto crm_level2_cnt                = dm_device.get<int,1>("crm_level2_cnt");
-  auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
-  auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
-  auto ecpp_sum_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_cen");
-  auto ecpp_sum_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cloudy_bar_bnd");
-  auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
-  auto ecpp_sum_area_cen          = dm_device.get<real,5>("ecpp_sum_area_cen");
-  auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
-  auto ecpp_sum_area_bnd          = dm_device.get<real,5>("ecpp_sum_area_bnd");
-  auto ecpp_sum_mass_bnd          = dm_device.get<real,5>("ecpp_sum_mass_bnd");
-  auto ecpp_sum_rh_cen            = dm_device.get<real,5>("ecpp_sum_rh_cen");
-  auto ecpp_sum_qcloud_cen        = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
-  auto ecpp_sum_qice_cen          = dm_device.get<real,5>("ecpp_sum_qice_cen");
+  auto ecpp_cat_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_cen");
+  auto ecpp_cat_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_bnd");
+  auto ecpp_cat_wwqui_cloudy_bar_cen  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_cen");
+  auto ecpp_cat_wwqui_cloudy_bar_bnd  = dm_device.get<real,2>("ecpp_cat_wwqui_cloudy_bar_bnd");
+  auto ecpp_cat_area_cen_final        = dm_device.get<real,5>("ecpp_cat_area_cen_final");
+  auto ecpp_cat_area_cen              = dm_device.get<real,5>("ecpp_cat_area_cen");
+  auto ecpp_cat_area_bnd_final        = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
+  auto ecpp_cat_area_bnd          = dm_device.get<real,5>("ecpp_cat_area_bnd");
+  auto ecpp_cat_mass_bnd          = dm_device.get<real,5>("ecpp_cat_mass_bnd");
+  auto ecpp_cat_rh_cen            = dm_device.get<real,5>("ecpp_cat_rh_cen");
+  auto ecpp_cat_qcloud_cen        = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
+  auto ecpp_cat_qice_cen          = dm_device.get<real,5>("ecpp_cat_qice_cen");
+  auto ecpp_cat_precsolidcen      = dm_device.get<real,5>("ecpp_cat_precsolidcen");
+  auto ecpp_cat_tbeg              = dm_device.get<real,2>("ecpp_cat_tbeg");
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
   // Copy the CRM ECPP state to host arrays
-  ecpp_sum_wwqui_bar_cen             .deep_copy_to( ecpp_output_wwqui_cen               );
-  ecpp_sum_wwqui_cloudy_cen          .deep_copy_to( ecpp_output_wwqui_cloudy_cen        );
-  ecpp_sum_wwqui_bnd                 .deep_copy_to( ecpp_output_wwqui_bnd               );
-  ecpp_sum_wwqui_cloudy_bnd          .deep_copy_to( ecpp_output_wwqui_cloudy_bnd        );
-  ecpp_sum_acen                      .deep_copy_to( ecpp_output_acen                    );
-  ecpp_sum_abnd                      .deep_copy_to( ecpp_output_abnd                    );
-  ecpp_sum_acen_tf                   .deep_copy_to( ecpp_output_acen_tf                 );
-  ecpp_sum_abnd_tf                   .deep_copy_to( ecpp_output_abnd_tf                 );
-  ecpp_sum_massflxbnd                .deep_copy_to( ecpp_output_massflxbnd              );
-  ecpp_sum_rhcen                     .deep_copy_to( ecpp_output_rhcen                   );
-  ecpp_sum_qcloudcen                 .deep_copy_to( ecpp_output_qcloudcen               );
-  ecpp_sum_qlsinkcen                 .deep_copy_to( ecpp_output_qlsinkcen               );
-  ecpp_sum_precrcen                  .deep_copy_to( ecpp_output_precrcen                );
-  ecpp_sum_precsolidcen              .deep_copy_to( ecpp_output_precsolidcen            );
-  ecpp_sum_tbeg                      .deep_copy_to( ecpp_output_tbeg                    );
+  ecpp_cat_wwqui_bar_cen                 .deep_copy_to( ecpp_output_wwqui_cen               );
+  ecpp_cat_wwqui_cloudy_bar_cen          .deep_copy_to( ecpp_output_wwqui_cloudy_cen        );
+  ecpp_cat_wwqui_bar_bnd                 .deep_copy_to( ecpp_output_wwqui_bnd               );
+  ecpp_cat_wwqui_cloudy_bar_bnd          .deep_copy_to( ecpp_output_wwqui_cloudy_bnd        );
+  ecpp_cat_area_cen                      .deep_copy_to( ecpp_output_acen                    );
+  ecpp_cat_area_bnd                      .deep_copy_to( ecpp_output_abnd                    );
+  ecpp_cat_area_cen_final                .deep_copy_to( ecpp_output_acen_tf                 );
+  ecpp_cat_area_bnd_final                .deep_copy_to( ecpp_output_abnd_tf                 );
+  ecpp_cat_mass_bnd                      .deep_copy_to( ecpp_output_massflxbnd              );
+  ecpp_cat_rh_cen                        .deep_copy_to( ecpp_output_rhcen                   );
+  ecpp_cat_qcloud_cen                    .deep_copy_to( ecpp_output_qcloudcen               );
+  ecpp_cat_qice_cen                      .deep_copy_to( ecpp_output_qlsinkcen               );
+  ecpp_cat_precsolidcen                  .deep_copy_to( ecpp_output_precrcen                );
+  ecpp_cat_precsolidcen                  .deep_copy_to( ecpp_output_precsolidcen            );
+  ecpp_cat_tbeg                          .deep_copy_to( ecpp_output_tbeg                    );
   printf("\nLiran check pam_ecpp_copy_to_host 5\n");
   yakl::fence();
   //------------------------------------------------------------------------------------------------

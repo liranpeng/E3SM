@@ -4051,7 +4051,11 @@ acwxx1_k_loop: &
     kdraft_top_use(:,:) = kdraft_top_ecpp(:,:)
 
     mtype_updnenv_use(:,:) = mtype_updnenv_ecpp(:,:)
-
+    !do jcls = 1, ncls_use
+    !do icc = 1, 2
+    !    print*,'check mtype_updnenv_ecpp',icc,jcls,mtype_updnenv_ecpp(icc,jcls)
+    !end do
+    !end do
     wbnd_bar_use(:) = wbnd_bar(:)
 
     mfbnd_use(:,:,:) = mfbnd_ecpp(:,:,:)
@@ -4060,6 +4064,25 @@ acwxx1_k_loop: &
     acen_tfin_use(:,:,:) = max( acen_tfin_ecpp(:,:,:), 0.0_r8 )
 !   acen_tavg_use(kte,:,:) = 0.0
 !   acen_tfin_use(kte,:,:) = 0.0
+
+    do jcls = 0, ncls_use
+    do icc = 0, 2
+        abnd_tavg_use(1,icc,jcls) = abnd_tavg_use(2,icc,jcls) 
+        acen_tavg_use(1,icc,jcls) = acen_tavg_use(2,icc,jcls) 
+        acen_tfin_use(1,icc,jcls) = acen_tfin_use(2,icc,jcls) 
+        abnd_tavg_use(61,icc,jcls) = abnd_tavg_use(60,icc,jcls) 
+        acen_tavg_use(61,icc,jcls) = acen_tavg_use(60,icc,jcls) 
+        acen_tfin_use(61,icc,jcls) = acen_tfin_use(60,icc,jcls)
+    end do
+    end do
+
+     
+    !do k = kts, ktebnd
+    !    do jcls = 1, ncls_use
+    !        print*,'Liran check abnd_tavg_use0',k,kts,ktebnd,jcls,abnd_tavg_use(k,1,jcls),abnd_tavg_use(k,2,jcls),abnd_tavg_use(k,0,jcls)
+    !        print*,'Liran check acen_tavg_use0',k,kts,ktebnd,jcls,acen_tavg_use(k,1,jcls),acen_tavg_use(k,2,jcls),acen_tavg_use(k,0,jcls)
+    !    end do
+    !end do
 
 !   calc rhodz_cen
     rhodz_cen(kts:ktecen) = rhocen_bar(kts:ktecen)*dzcen(kts:ktecen)
@@ -4093,11 +4116,13 @@ acwxx1_k_loop: &
              ((jcls /= jcls_qu) .and. &
               (mtype_updnenv_use(icc,jcls) /= mtype_updraft_ecpp) .and. &
               (mtype_updnenv_use(icc,jcls) /= mtype_dndraft_ecpp)) ) then
+        !print*,'bad mtype_updnenv',jcls, jcls_qu,mtype_updnenv_use(icc,jcls),mtype_quiescn_ecpp,mtype_dndraft_ecpp,mtype_updraft_ecpp
         write( msg, '(a,5(1x,i5))' ) &
         '*** parampollu_check_adjust_inputs - bad mtype_updnenv', &
         it, jt, jcls, icc, mtype_updnenv_use(icc,jcls)
         call ecpp_message( lunout, msg )
         end if
+        !print*,'check mtype_updnenv',icc,jcls, jcls_qu,mtype_updnenv_use(icc,jcls),jclsicc_cld,ncls_noc,jclsicc_cld,ncls_cld
     end do
     end do
 
@@ -4171,12 +4196,16 @@ acwxx1_k_loop: &
             if (k > ktecen) cycle
             acen_tavg_use(k,0,jcls) = sum( acen_tavg_use(k,1:2,jcls) )
             acen_tfin_use(k,0,jcls) = sum( acen_tfin_use(k,1:2,jcls) )
+            !print*,'Liran check abnd_tavg_use jcls',k,jcls,abnd_tavg_use(k,1,jcls),abnd_tavg_use(k,2,jcls),abnd_tavg_use(k,0,jcls)
+            !print*,'Liran check acen_tavg_use jcls',k,jcls,acen_tavg_use(k,1,jcls),acen_tavg_use(k,2,jcls),acen_tavg_use(k,0,jcls)
         end do
         do icc = 0, 2
             abnd_tavg_use(k,icc,0) = sum( abnd_tavg_use(k,icc,1:ncls_use) )
             if (k > ktecen) cycle
             acen_tavg_use(k,icc,0) = sum( acen_tavg_use(k,icc,1:ncls_use) )
             acen_tfin_use(k,icc,0) = sum( acen_tfin_use(k,icc,1:ncls_use) )
+            !print*,'Liran check abnd_tavg_use icc',k,icc,abnd_tavg_use(k,icc,1),abnd_tavg_use(k,icc,2),abnd_tavg_use(k,icc,3),abnd_tavg_use(k,icc,0)
+            !print*,'Liran check acen_tavg_use icc',k,icc,acen_tavg_use(k,icc,1),acen_tavg_use(k,icc,2),acen_tavg_use(k,icc,3),acen_tavg_use(k,icc,0)
         end do
 
         do i = 1, 3
@@ -4189,9 +4218,9 @@ acwxx1_k_loop: &
                 tmpa = acen_tfin_use(k,0,0)
             end if
             if (abs(tmpa-1.0_r8) < a_sum_toleraa) cycle
-            write(msg,'(2a,i5,1pe15.7)') &
-                '*** parampollu_check_adjust_inputs - bad ', &
-                area_name10(i), k, tmpa  
+            write(msg,'(2a,i5,i5,1pe15.7)') &
+                '*** Liran check parampollu_check_adjust_inputs - bad ', &
+                area_name10(i), i, k, tmpa  
             call ecpp_message( lunout, msg )
             call ecpp_error_fatal( lunout, msg )
         end do
@@ -4205,26 +4234,29 @@ acwxx1_k_loop: &
             acen_tfin_use(k,0:2,0:ncls_use) = acen_tfin_use(k,0:2,0:ncls_use)/tmpa
         end if
 
-        do i = 1, 3
-            if ((i >= 2) .and. (k > ktecen)) cycle
-            jcls = jcls_qu
-            if (i == 1) then
-                tmpa = abnd_tavg_use(k,0,jcls)
-            else if (i == 2) then
-                tmpa = acen_tavg_use(k,0,jcls)
-            else
-                tmpa = acen_tfin_use(k,0,jcls)
-            end if
-            msg = ' '
-            if (tmpa < a_quiescn_minaa) then
-                write(msg,'(2a,i5,1p,2e10.2)') &
-                '*** parampollu_check_adjust_inputs - a_quiescent(v1) too small ', &
-                area_name10(i), k, tmpa, a_quiescn_minaa
-                call ecpp_message( lunout, msg )
-                call ecpp_error_fatal( lunout, msg )
-            end if
-        end do
-
+        !do i = 1, 3
+        !    if ((i >= 2) .and. (k > ktecen)) cycle
+        !    jcls = jcls_qu
+        !    if (i == 1) then
+        !        tmpa = abnd_tavg_use(k,0,jcls)
+        !        !print*,'tmpa0',k,i,jcls,tmpa,tmpa,a_quiescn_minaa
+        !    else if (i == 2) then
+        !        tmpa = acen_tavg_use(k,0,jcls)
+        !        !print*,'tmpa1',k,i,jcls,tmpa,tmpa,a_quiescn_minaa
+        !    else
+        !        tmpa = acen_tfin_use(k,0,jcls)
+        !        !print*,'acen_tfin_use',k,jcls,tmpa,a_quiescn_minaa
+        !    end if
+        !    msg = ' '
+        !    if (tmpa < a_quiescn_minaa) then
+        !        print*,'Liran a_quiescn_minaa',k, i,tmpa
+        !        write(msg,'(2a,i5,i5,1p,2e10.2)') &
+        !        '*** parampollu_check_adjust_inputs - a_quiescent(v1) too small ', &
+        !        area_name10(i), k, i, tmpa, a_quiescn_minaa
+        !        call ecpp_message( lunout, msg )
+        !        call ecpp_error_fatal( lunout, msg )
+        !    end if
+        !end do
     end do
 
 

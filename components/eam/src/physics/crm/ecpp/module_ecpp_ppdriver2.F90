@@ -764,6 +764,7 @@ module module_ecpp_ppdriver2
     nupdraft = nupdraft_in
     ndndraft = ndndraft_in
     ncls_ecpp = (nupdraft + ndndraft + 1)
+    !print*,'Liran check ncls_ecpptmp',nupdraft,ndndraft,ncls_ecpp
     if (ncls_ecpp > maxcls_ecpp) then
       write(msg,'(a,2(1x,i6))')   &
           '*** parampollu_driver - ncls_ecpp > maxcls_ecpp, values =',   &
@@ -897,7 +898,7 @@ module module_ecpp_ppdriver2
       !
 
       ! load other/quiescent
-      jcls = 1
+      jcls = 2
 
       kupdraftbase = 1
       kupdrafttop  = pver  
@@ -907,10 +908,11 @@ module module_ecpp_ppdriver2
       kdraft_bot_ecpp(   1:2,jcls) = 1
       kdraft_top_ecpp(   1:2,jcls) = pver 
       mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
+      !print*,'mtype_updnenv_ecpp 1:',mtype_updnenv_ecpp(   1:2,jcls)
 
       ! load updrafts
       do n=1,nupdraft
-        jcls = jcls + 1
+        jcls = 1 !jcls - 1
 
         kdraft_bot_ecpp(   1:2,jcls) = max( kupdraftbase(n), 1 )
 #ifdef ECPP_LEV_MOD
@@ -919,15 +921,19 @@ module module_ecpp_ppdriver2
         kdraft_top_ecpp(   1:2,jcls) = min( kupdrafttop(n), pver )
 #endif
         mtype_updnenv_ecpp(1:2,jcls) = mtype_updraft_ecpp
+        !print*,'mtype_updnenv_ecpp 2:',mtype_updnenv_ecpp(   1:2,jcls)
+
       end do ! n=1,nupdraft
 
       ! load downdrafts
       do n=1,ndndraft
-        jcls = jcls + 1
+        jcls = 3 !jcls + 1
 
         kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
         mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
+        !print*,'mtype_updnenv_ecpp 3:',mtype_updnenv_ecpp(   1:2,jcls)
+
       end do ! n=1,ndndraft
 
       ! load mfbnd and "area" arrays for all classes 
@@ -935,7 +941,7 @@ module module_ecpp_ppdriver2
       abnd_tavg(:,:,:) = 0.0
       abnd_tfin(:,:,:) = 0.0
       acen_tavg(:,:,:) = 0.0
-      acen_tfin(:,:,:) = 0.0
+      acen_tfin(:,:,:) = 0.0      
 
       do jcls = 1, ncls_ecpp
       do icc = 1, 2
@@ -945,6 +951,7 @@ module module_ecpp_ppdriver2
                                 + massflxbnd_3d(i, k,icc,jcls,2)
           abnd_tavg(lk,icc,jcls) = abnd_3d(i, k,icc,jcls,1) &
                                 + abnd_3d(i, k,icc,jcls,2)
+          !print*,'Liran abnd_3d',i, k,icc,jcls,abnd_3d(i, k,icc,jcls,1)+abnd_3d(i, k,icc,jcls,2)
           abnd_tfin(lk,icc,jcls) = abnd_tf_3d(i, k,icc,jcls,1) &
                                 + abnd_tf_3d(i, k,icc,jcls,2)
       end do ! k
@@ -962,6 +969,9 @@ module module_ecpp_ppdriver2
         lk=pver-k+1
         acen_tavg(  lk,1:2,1:ncls_ecpp    ) = acen_3d(i, k,1:2,1:ncls_ecpp,1)+ &
                                               acen_3d(i, k,1:2,1:ncls_ecpp,2)
+        !do jcls = 1, ncls_ecpp
+        !  print*,'acen_tavg',lk,acen_tavg(  lk,1,jcls),lk,acen_tavg(  lk,2,jcls)
+        !end do
         acen_tfin(  lk,1:2,1:ncls_ecpp    ) = acen_tf_3d(i, k,1:2,1:ncls_ecpp,1)+ &
                                               acen_tf_3d(i, k,1:2,1:ncls_ecpp,2)
         acen_prec(  lk,1:2,1:ncls_ecpp    ) = acen_3d(i, k,1:2,1:ncls_ecpp,2)

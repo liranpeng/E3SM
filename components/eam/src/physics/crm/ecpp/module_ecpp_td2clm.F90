@@ -4077,12 +4077,12 @@ acwxx1_k_loop: &
     end do
 
      
-    do k = kts, ktebnd
-        do jcls = 1, ncls_use
-            print*,'Liran check abnd_tavg_use0',k,kts,ktebnd,jcls,abnd_tavg_use(k,1,jcls),abnd_tavg_use(k,2,jcls),abnd_tavg_use(k,0,jcls)
-            print*,'Liran check acen_tavg_use0',k,kts,ktebnd,jcls,acen_tavg_use(k,1,jcls),acen_tavg_use(k,2,jcls),acen_tavg_use(k,0,jcls)
-        end do
-    end do
+    !do k = kts, ktebnd
+    !    do jcls = 1, ncls_use
+    !        print*,'Liran check abnd_tavg_use0',k,kts,ktebnd,jcls,abnd_tavg_use(k,1,jcls),abnd_tavg_use(k,2,jcls),abnd_tavg_use(k,0,jcls)
+    !        print*,'Liran check acen_tavg_use0',k,kts,ktebnd,jcls,acen_tavg_use(k,1,jcls),acen_tavg_use(k,2,jcls),acen_tavg_use(k,0,jcls)
+    !    end do
+    !end do
 
 !   calc rhodz_cen
     rhodz_cen(kts:ktecen) = rhocen_bar(kts:ktecen)*dzcen(kts:ktecen)
@@ -4528,7 +4528,7 @@ acwxx1_k_loop: &
     write(lun155,'(3(i5,i3,1pe16.8))') ((jcls,icc,acen_tavg_use(26,icc,jcls),icc=0,2),jcls=0,3)
     end if
 !   first set to zero any areas that are < afrac_cut
-    do k = kts, ktebnd
+    do k = kts, ktebnd-1
         do i = 1, 3
             jcls = jcls_qu
             if ((i >= 2) .and. (k > ktecen)) cycle

@@ -122,15 +122,15 @@ NCLASS_TR = nupdraft + ndndraft + 1;
 ndraft_max = 1 + nupdraft_max + ndndraft_max;
 
 //printf("Liran check start ECPP:\n");
-printf("\nValue of DN1: %d: ", DN1);
-printf("\nValue of NCLASS_TR: %d: ", NCLASS_TR);
-printf("\nValue of ndraft_max: %d: ", ndraft_max);
-printf("\nValue of nupdraft: %d: ", nupdraft);
-printf("\nValue of ndndraft: %d: ", ndndraft);
-printf("\nValue of nzstag: %d: ", nzstag);
-printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
-printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
-printf("\nValue of nens: %d: ", nens);
+//printf("\nValue of DN1: %d: ", DN1);
+//printf("\nValue of NCLASS_TR: %d: ", NCLASS_TR);
+//printf("\nValue of ndraft_max: %d: ", ndraft_max);
+//printf("\nValue of nupdraft: %d: ", nupdraft);
+//printf("\nValue of ndndraft: %d: ", ndndraft);
+//printf("\nValue of nzstag: %d: ", nzstag);
+//printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
+//printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
+//printf("\nValue of nens: %d: ", nens);
 
 coupler.set_option<int>("ecpp_NCLASS_CL",NCLASS_CL);
 coupler.set_option<int>("ecpp_NCLASS_PR",NCLASS_PR);
@@ -262,8 +262,8 @@ for (int icrm = 0; icrm < nens; ++icrm) {
     dndrafttop(icrm) = nz - 1;
     dndraftbase(icrm) = 0;
 }
- printf("\nValue of crm_cnt: %d: ", crm_cnt(0));
- printf("\nValue of crm_level2_cnt: %d: ", crm_level2_cnt(0));
+ //printf("\nValue of crm_cnt: %d: ", crm_cnt(0));
+ //printf("\nValue of crm_level2_cnt: %d: ", crm_level2_cnt(0));
 
 auto qlsink_bf            = dm_device.get<real,4>("qlsink_bf");
 auto prain                = dm_device.get<real,4>("prain");
@@ -414,23 +414,27 @@ parallel_for(SimpleBounds<2>(nzi,nens), YAKL_LAMBDA (int iz, int iens) {
 parallel_for(SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
   ecpp_cat_area_cen_final(iPR,iTR,iCL,k,icrm) = 0;
   ecpp_cat_area_cen(iPR,iTR,iCL,k,icrm)       = 0;
-  ecpp_cat_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
-  ecpp_cat_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
-  ecpp_cat_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
   ecpp_cat_rh_cen(iPR,iTR,iCL,k,icrm)         = 0;
   ecpp_cat_qcloud_cen(iPR,iTR,iCL,k,icrm)     = 0;
   ecpp_cat_qice_cen(iPR,iTR,iCL,k,icrm)       = 0;
   ecpp_cat_precsolidcen(iPR,iTR,iCL,k,icrm)   = 0;
   ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) = 0;
   ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)       = 0;
-  ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
-  ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
-  ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
   ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)         = 0;
   ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)     = 0;
   ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)       = 0;
   ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)   = 0;
 });
+
+parallel_for(SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,nzi,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
+  ecpp_cat_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
+  ecpp_cat_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
+  ecpp_cat_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
+  ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
+  ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
+  ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
+});
+
 }
 
 // =========================================================================|ecpp_crm_stat|=========
@@ -475,14 +479,14 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   dndn = ndndraft;
   dnup = nupdraft;
 
-  printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
-  printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
+  //printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
+  //printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
   
-  printf("\nValue of ndraft_max 2: %d ", ndraft_max);
-  printf("\nValue of dndn: %d: ", dndn);
-  printf("\nValue of dnup: %d: ", dnup);
-  printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
-  printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
+  //printf("\nValue of ndraft_max 2: %d ", ndraft_max);
+  //printf("\nValue of dndn: %d: ", dndn);
+  //printf("\nValue of dnup: %d: ", dnup);
+  //printf("\nValue of NCLASS_CL: %d: ", NCLASS_CL);
+  //printf("\nValue of NCLASS_PR: %d: ", NCLASS_PR);
 
   //------------------------------------------------------------------------------------------------
   // get variables allocated in ecpp_crm_init
@@ -732,7 +736,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
     crm_cnt(iens) = crm_cnt(iens) + 1;
   });
   runcount = crm_cnt(0);
-  printf("%s %d\n", "Liran check runcount:", runcount);
+  //printf("%s %d\n", "Liran check runcount:", runcount);
   // Some how if I move line 358 to 365 above before dm_device.get calls, the value ntavg1 will change. 
   real ecpp_ntavg1_ss = std::min(600.0, gcm_dt); // lesser of 10 minutes or the GCM timestep
   real ecpp_ntavg2_ss = gcm_dt;               // level-2 averaging period is GCM timestep
@@ -745,9 +749,9 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   temp0 = (int)(ecpp_ntavg2_ss);
   ntavg2 =  temp0/ temp1;
   //printf("%s %d\n", "Liran check crm_dt 00:", temp1);
-  printf("%s %d\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", temp0/temp1);
-  printf("%s %d\n", "Liran check ntavg1", ntavg1);
-  printf("%s %d\n", "Liran check ntavg2", ntavg2);
+  //printf("%s %d\n", "Liran check int(ecpp_ntavg1_ss / crm_dt))", temp0/temp1);
+  //printf("%s %d\n", "Liran check ntavg1", ntavg1);
+  //printf("%s %d\n", "Liran check ntavg2", ntavg2);
   // Set level-1 and level-2 averaging periods for ECPP
   
   // Calculate number of steps assuming dt evenly divides ntavg[12]_ss
@@ -766,7 +770,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 // ntavg1_mm minutes.  
 
 esat_test = esatw_crm(T_test);
-printf("%s %.2f\n", "Liran check evp:", esat_test);
+//printf("%s %.2f\n", "Liran check evp:", esat_test);
 parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
   YAKL_LAMBDA (int k, int j, int i, int icrm) {
     real EVS = esatw_crm(crm_temp(k,j,i,icrm)); //   ! saturation water vapor pressure (PA)
@@ -798,12 +802,12 @@ parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, i
       qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
 
 */
-printf("%s %.2f\n", "Liran check liran_test4davg:", liran_test4davg(10,10,10,10));
+//printf("%s %.2f\n", "Liran check liran_test4davg:", liran_test4davg(10,10,10,10));
 // ----------------------------------------------------------------------
 // Check if we have reached the end of the level 1 time averaging period   
 // ----------------------------------------------------------------------
 if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
-  printf("%s %.2f\n", "Liran check liran_test4davg average start:", liran_test4davg(10,10,10,10));
+  //printf("%s %.2f\n", "Liran check liran_test4davg average start:", liran_test4davg(10,10,10,10));
   parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
         // itavg1 is divisible by ntavg1
       //printf("%s %d %.2f \n", "Liran check liran_test4davg 0:", crm_cnt(icrm),liran_test4d(k,j,i,icrm));
@@ -822,8 +826,8 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k, int iens) {
     acldy_cen_tbeg (k,iens) = acldy_cen_tbeg (k,iens)  /ntavg1;
   });
-  printf("%s %.2f\n", "Liran check liran_test4davg average end:", liran_test4davg(10,10,10,10));
-  printf("Liran check categorization_stats\n");
+  //printf("%s %.2f\n", "Liran check liran_test4davg average end:", liran_test4davg(10,10,10,10));
+  //printf("Liran check categorization_stats\n");
   //printf("%s %d\n", "Liran check itavg1 div ntavg1:", itavg1 % ntavg1);
   
 
@@ -873,7 +877,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     }
   }); // end of parallel_for( SimpleBounds<3>(ny,nx,nens)
 
-  printf("Liran check categorization_stats 2\n");
+  //printf("Liran check categorization_stats 2\n");
   //------------------------------------------------------------------------------------------------
     //parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
       //crm_cnt(iens) = crm_cnt(iens) + 1;
@@ -911,9 +915,9 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   // if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then This is ignored
   int ijdel = std::max({ijdel_upaa, ijdel_upbb, ijdel_downaa, ijdel_downbb});
 
-  printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
+  //printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
   // Value of mode_updnthresh: 16
-  printf("\nValue of ijdel: %d: ", ijdel);
+  //printf("\nValue of ijdel: %d: ", ijdel);
   // Value of ijdel: 0 
 
   //if (ijdel > 0) then remove line 972 to 1008
@@ -947,7 +951,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       !
       ! Get the mean values first for wup and wdown
   */
-
+  //printf("Liran check categorization_stats 3\n");
   parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
     
     for (int k_crm=0; k_crm<cloudtop_upaa(j,i,icrm); k_crm++) {
@@ -977,6 +981,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     }
 
   }); // end of parallel_for( SimpleBounds<3>(ny,nx,nens)
+  //printf("Liran check categorization_stats 4\n");
 
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     if (nup(icrm) > 0.0) {
@@ -995,7 +1000,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       wdown_bar_k(k_crm,icrm)   = wdown_bar_k(k_crm,icrm) / ndown_k(k_crm,icrm);
     }
   });
-
+  //printf("Liran check categorization_stats 5\n");
   // !Now, we can get the std. dev. of wup and wdown.
   parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
     
@@ -1042,7 +1047,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     wup_rms_k(k_crm,icrm) = std::sqrt( wup_bar_k(k_crm,icrm)*wup_bar_k(k_crm,icrm) + wup_stddev_k(k_crm,icrm)*wup_stddev_k(k_crm,icrm) );
     wdown_rms_k(k_crm,icrm) = std::sqrt( wdown_bar_k(k_crm,icrm)*wdown_bar_k(k_crm,icrm) + wdown_stddev_k(k_crm,icrm)*wdown_stddev_k(k_crm,icrm) );
   });
-
+  //printf("Liran check categorization_stats 6\n");
   // ! calculated smoothed (3-point) wup/down_rms
   parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k_crm, int icrm) {
     tmpveca(k_crm,icrm) = wup_rms_k(k_crm,icrm);
@@ -1072,6 +1077,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     wup_rms_ksmo(nzi,icrm) = wup_rms_ksmo(nz,icrm);
     wdown_rms_ksmo(nzi,icrm) = wdown_rms_ksmo(nz,icrm);
   });
+  //printf("Liran check categorization_stats 7\n");
   /*
     ! Get masks to determine (cloud vs. clear) (up vs. down vs. other) categories.
     ! Vertical velocities are checked on the cell vertical interfaces to determine
@@ -1112,7 +1118,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       wup_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
     }
   });
-
+  //printf("Liran check categorization_stats 8\n");
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     real tmpsuma = 0.0;
     real tmpw = 0.0;
@@ -1137,7 +1143,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
     }
 
   });
-
+  //printf("Liran check categorization_stats 9\n");
   // End of call determine_transport_thresh
 
   // Starting line 608
@@ -1152,6 +1158,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
   });
   
   
+  //printf("Liran check categorization_stats 10\n");
 
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     bool thresh_calc_not_done = true;
@@ -1230,7 +1237,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       ! See Xu et al., 2002, Q.J.R.M.S.
       !
   */
-
+  //printf("Liran check categorization_stats 11\n");
 
   /*
       ! Initialize the masks to zero and then we will accumulate values into
@@ -1553,7 +1560,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
         } // end of for (int j=0; y_crm<=ny; y_crm++)
       } // end of for (int i=0; x_crm<=nx; x_crm++)
       // Other loops over k, as in the original code
-
+  
 // end of setup_class_masks
 /* ==========================================================================
       !
@@ -1820,7 +1827,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
       ! avg2 then we need to zero out the running sum just created for the areas
       ! if it is not the last block of time in ntavg2
 */    
-
+  //printf("Liran check categorization_stats 12\n");
   parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
     for (int k=0; k<nz; k++) {
       ecpp_sum_wwqui_bar_cen(k,icrm)        = ecpp_sum_wwqui_bar_cen(k,icrm)        + wwqui_bar_cen(k,icrm);
@@ -1850,14 +1857,23 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
         for (int iPR=0; iPR<NCLASS_PR; iPR++) {
           for (int k=0; k<nz; k++) {
             ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)       + area_cen(iPR,iTR,iCL,k,icrm);
-            ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       + area_bnd(iPR,iTR,iCL,k,icrm);
             ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm)  =  ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) + area_cen_final(iPR,iTR,iCL,k,icrm);
-            ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm)  =  ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) + area_bnd_final(iPR,iTR,iCL,k,icrm);
-            ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       + mass_bnd(iPR,iTR,iCL,k,icrm);
             ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)          =  ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)         + rh_cen(iPR,iTR,iCL,k,icrm);
             ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)      =  ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)     + qcloud_cen(iPR,iTR,iCL,k,icrm);
             ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)       + qice_cen(iPR,iTR,iCL,k,icrm);
             ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)    =  ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)   + qrain_cen(iPR,iTR,iCL,k,icrm);
+          }
+        }
+      }
+    }
+
+    for (int iCL=0; iCL<NCLASS_CL; iCL++) {
+      for (int iTR=0; iTR<ndraft_max; iTR++) {
+        for (int iPR=0; iPR<NCLASS_PR; iPR++) {
+          for (int k=0; k<nzi; k++) {
+            ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       + area_bnd(iPR,iTR,iCL,k,icrm);
+            ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm)  =  ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) + area_bnd_final(iPR,iTR,iCL,k,icrm);
+            ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       + mass_bnd(iPR,iTR,iCL,k,icrm);
           }
         }
       }
@@ -1890,6 +1906,7 @@ if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
 
 // ! Check if we have reached the end of a level 2 averaging period.
 if (runcount >=ntavg2 && runcount % ntavg2 == 0){
+    //printf("Liran check categorization_stats 15\n");
 /*
       ! Turn the running sums into averages. ncnt1 in this case is the number
       ! of calls to categorization_stats during the level 2 averaging period,
@@ -1908,7 +1925,7 @@ if (runcount >=ntavg2 && runcount % ntavg2 == 0){
     ecpp_cat_wwqui_bar_bnd(k_crm,icrm)             = ecpp_sum_wwqui_bar_bnd(k_crm,icrm)       /crm_level2_cnt(icrm);
     ecpp_cat_wwqui_cloudy_bar_bnd(k_crm,icrm)      = ecpp_sum_wwqui_cloudy_bar_bnd(k_crm,icrm)/crm_level2_cnt(icrm);
   });
-
+  //printf("Liran check categorization_stats 16\n");
   //printf("\nLiran check start level2 averaging 02\n");
   parallel_for(SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
     ecpp_cat_area_cen(iPR,iTR,iCL,k,icrm)         = ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)/crm_level2_cnt(icrm);
@@ -1983,6 +2000,32 @@ inline void pam_ecpp_copy_to_host( pam::PamCoupler &coupler ) {
   auto NCLASS_CL     = coupler.get_option<int>("ecpp_NCLASS_CL");
   auto ndraft_max    = coupler.get_option<int>("ecpp_ndraft_max");
   auto NCLASS_PR     = coupler.get_option<int>("ecpp_NCLASS_PR");
+  auto gcm_nlev     = coupler.get_option<int>("gcm_nlev");
+  auto gcm_nlevi    = coupler.get_option<int>("gcm_nlevi");
+  dm_device.register_and_allocate<real>("ecpp_output_acen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_acen_tf_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_abnd_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlevi,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_nlevi","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_abnd_tf_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlevi,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_nlevi","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_massflxbnd_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlevi,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_nlevi","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_rhcen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_qcloudcen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_qlsinkcen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_precrcen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_precsolidcen_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+  dm_device.register_and_allocate<real>("ecpp_output_tbeg_temp", "<description>", {NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens}, {"NCLASS_PR","ndraft_max","NCLASS_CL","gcm_lev","nens"});
+
+  auto ecpp_output_acen_temp         = dm_device.get<real,5>("ecpp_output_acen_temp");
+  auto ecpp_output_acen_tf_temp      = dm_device.get<real,5>("ecpp_output_acen_tf_temp");
+  auto ecpp_output_abnd_temp         = dm_device.get<real,5>("ecpp_output_abnd_temp");
+  auto ecpp_output_abnd_tf_temp      = dm_device.get<real,5>("ecpp_output_abnd_tf_temp");
+  auto ecpp_output_massflxbnd_temp   = dm_device.get<real,5>("ecpp_output_massflxbnd_temp");
+  auto ecpp_output_rhcen_temp        = dm_device.get<real,5>("ecpp_output_rhcen_temp");
+  auto ecpp_output_qcloudcen_temp    = dm_device.get<real,5>("ecpp_output_qcloudcen_temp");
+  auto ecpp_output_qlsinkcen_temp    = dm_device.get<real,5>("ecpp_output_qlsinkcen_temp");
+  auto ecpp_output_precrcen_temp     = dm_device.get<real,5>("ecpp_output_precrcen_temp");
+  auto ecpp_output_precsolidcen_temp = dm_device.get<real,5>("ecpp_output_precsolidcen_temp");
+  auto ecpp_output_tbeg_temp         = dm_device.get<real,5>("ecpp_output_tbeg_temp");
+
   auto ecpp_output_wwqui_cen         = dm_host.get<real,2>("ecpp_output_wwqui_cen");
   auto ecpp_output_wwqui_cloudy_cen  = dm_host.get<real,2>("ecpp_output_wwqui_cloudy_cen");
   auto ecpp_output_wwqui_bnd         = dm_host.get<real,2>("ecpp_output_wwqui_bnd");
@@ -2014,21 +2057,85 @@ inline void pam_ecpp_copy_to_host( pam::PamCoupler &coupler ) {
   auto ecpp_cat_tbeg              = dm_device.get<real,2>("ecpp_cat_tbeg");
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
+    //printf("\nLiran check pam_ecpp_copy_to_host 1\n");
+
+    parallel_for(SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
+      ecpp_output_acen_temp(iPR,iTR,iCL,k,icrm)         = 0;
+      ecpp_output_acen_tf_temp(iPR,iTR,iCL,k,icrm)      = 0;
+      ecpp_output_rhcen_temp(iPR,iTR,iCL,k,icrm)        = 0;
+      ecpp_output_qcloudcen_temp(iPR,iTR,iCL,k,icrm)    = 0;
+      ecpp_output_qlsinkcen_temp(iPR,iTR,iCL,k,icrm)    = 0;
+      ecpp_output_precrcen_temp(iPR,iTR,iCL,k,icrm)     = 0;
+      ecpp_output_precsolidcen_temp(iPR,iTR,iCL,k,icrm) = 0;
+    });
+    parallel_for(SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlevi,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
+      ecpp_output_abnd_temp(iPR,iTR,iCL,k,icrm)         = 0;
+      ecpp_output_abnd_tf_temp(iPR,iTR,iCL,k,icrm)      = 0;
+      ecpp_output_massflxbnd_temp(iPR,iTR,iCL,k,icrm)   = 0;
+    });
+    //printf("\nLiran check pam_ecpp_copy_to_host 2\n");
+    parallel_for("set output forcing tendencies", SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlev,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k_gcm,int icrm) {
+        int k_crm = gcm_nlev-1-k_gcm;
+        int CLR = 0;       // Clear sub-class
+        int PRN = 0;       // Not precipitating sub-class
+        int QUI = 1; // Quiescent class
+        if (k_crm<nz) {
+          ecpp_output_acen_temp (iPR,iTR,iCL,k_gcm,icrm)         = ecpp_cat_area_cen (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_acen_tf_temp (iPR,iTR,iCL,k_gcm,icrm)      = ecpp_cat_area_cen_final (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_rhcen_temp (iPR,iTR,iCL,k_gcm,icrm)        = ecpp_cat_rh_cen (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_qcloudcen_temp (iPR,iTR,iCL,k_gcm,icrm)    = ecpp_cat_qcloud_cen (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_qlsinkcen_temp (iPR,iTR,iCL,k_gcm,icrm)    = ecpp_cat_qice_cen (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_precrcen_temp (iPR,iTR,iCL,k_gcm,icrm)     = ecpp_cat_precsolidcen (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_precsolidcen_temp (iPR,iTR,iCL,k_gcm,icrm) = ecpp_cat_precsolidcen (iPR,iTR,iCL,k_crm,icrm);
+          
+        } else {
+          if (iPR==PRN && iTR==QUI && iCL==CLR){ 
+              // Liran: above crm levels are assumed to be clear, non-precipitation, and clear condition
+              ecpp_output_acen_temp (iPR,iTR,iCL,k_gcm,icrm)         = 1.;
+              ecpp_output_acen_tf_temp (iPR,iTR,iCL,k_gcm,icrm)      = 1.;
+              ecpp_output_rhcen_temp (iPR,iTR,iCL,k_gcm,icrm)        = 1.;
+              ecpp_output_qcloudcen_temp (iPR,iTR,iCL,k_gcm,icrm)    = 1.; 
+              ecpp_output_qlsinkcen_temp (iPR,iTR,iCL,k_gcm,icrm)    = 1.;
+              ecpp_output_precrcen_temp (iPR,iTR,iCL,k_gcm,icrm)     = 1.;
+              ecpp_output_precsolidcen_temp (iPR,iTR,iCL,k_gcm,icrm) = 1.;
+            }
+        }
+    });
+    //printf("\nLiran check pam_ecpp_copy_to_host 3\n");
+    parallel_for("set output forcing tendencies", SimpleBounds<5>(NCLASS_PR,ndraft_max,NCLASS_CL,gcm_nlevi,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k_gcm,int icrm) {
+        int k_crm = gcm_nlevi-1-k_gcm;
+        int CLR = 0;       // Clear sub-class
+        int PRN = 0;       // Not precipitating sub-class
+        int QUI = 1; // Quiescent class
+        if (k_crm<nz) {
+          ecpp_output_abnd_temp (iPR,iTR,iCL,k_gcm,icrm)         = ecpp_cat_area_bnd (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_abnd_tf_temp (iPR,iTR,iCL,k_gcm,icrm)      = ecpp_cat_area_bnd_final (iPR,iTR,iCL,k_crm,icrm);
+          ecpp_output_massflxbnd_temp (iPR,iTR,iCL,k_gcm,icrm)   = ecpp_cat_mass_bnd (iPR,iTR,iCL,k_crm,icrm);
+        } else {
+          if (iPR==PRN && iTR==QUI && iCL==CLR){   
+          // Liran: above crm levels are assumed to be clear, non-precipitation, and clear condition
+          ecpp_output_abnd_temp (iPR,iTR,iCL,k_gcm,icrm)         = 1.;
+          ecpp_output_abnd_tf_temp (iPR,iTR,iCL,k_gcm,icrm)      = 1.;
+          ecpp_output_massflxbnd_temp (iPR,iTR,iCL,k_gcm,icrm)   = 1.;
+            }
+        }
+    });
+  //printf("\nLiran check pam_ecpp_copy_to_host 4\n");
   // Copy the CRM ECPP state to host arrays
   ecpp_cat_wwqui_bar_cen                 .deep_copy_to( ecpp_output_wwqui_cen               );
   ecpp_cat_wwqui_cloudy_bar_cen          .deep_copy_to( ecpp_output_wwqui_cloudy_cen        );
   ecpp_cat_wwqui_bar_bnd                 .deep_copy_to( ecpp_output_wwqui_bnd               );
   ecpp_cat_wwqui_cloudy_bar_bnd          .deep_copy_to( ecpp_output_wwqui_cloudy_bnd        );
-  ecpp_cat_area_cen                      .deep_copy_to( ecpp_output_acen                    );
-  ecpp_cat_area_bnd                      .deep_copy_to( ecpp_output_abnd                    );
-  ecpp_cat_area_cen_final                .deep_copy_to( ecpp_output_acen_tf                 );
-  ecpp_cat_area_bnd_final                .deep_copy_to( ecpp_output_abnd_tf                 );
-  ecpp_cat_mass_bnd                      .deep_copy_to( ecpp_output_massflxbnd              );
-  ecpp_cat_rh_cen                        .deep_copy_to( ecpp_output_rhcen                   );
-  ecpp_cat_qcloud_cen                    .deep_copy_to( ecpp_output_qcloudcen               );
-  ecpp_cat_qice_cen                      .deep_copy_to( ecpp_output_qlsinkcen               );
-  ecpp_cat_precsolidcen                  .deep_copy_to( ecpp_output_precrcen                );
-  ecpp_cat_precsolidcen                  .deep_copy_to( ecpp_output_precsolidcen            );
+  ecpp_output_acen_temp                  .deep_copy_to( ecpp_output_acen                    );
+  ecpp_output_abnd_temp                  .deep_copy_to( ecpp_output_abnd                    );
+  ecpp_output_acen_tf_temp               .deep_copy_to( ecpp_output_acen_tf                 );
+  ecpp_output_abnd_tf_temp               .deep_copy_to( ecpp_output_abnd_tf                 );
+  ecpp_output_massflxbnd_temp            .deep_copy_to( ecpp_output_massflxbnd              );
+  ecpp_output_rhcen_temp                 .deep_copy_to( ecpp_output_rhcen                   );
+  ecpp_output_qcloudcen_temp             .deep_copy_to( ecpp_output_qcloudcen               );
+  ecpp_output_qlsinkcen_temp             .deep_copy_to( ecpp_output_qlsinkcen               );
+  ecpp_output_precrcen_temp              .deep_copy_to( ecpp_output_precrcen                );
+  ecpp_output_precsolidcen_temp          .deep_copy_to( ecpp_output_precsolidcen            );
   ecpp_cat_tbeg                          .deep_copy_to( ecpp_output_tbeg                    );
   //printf("\nLiran check pam_ecpp_copy_to_host 5\n");
   yakl::fence();

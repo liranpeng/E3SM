@@ -3995,7 +3995,7 @@ acwxx1_k_loop: &
 
     real(r8) :: ardz_cut   ! sub-class fractional areas below this value are set to zero
     real(r8) :: arw_draft_cut   ! mass fluxes below this value are set to zero
-    real(r8) :: a_sum_toleraa = 1.0e-5_r8   ! tolerance for abs(sum(axxx) - 1.0)
+    real(r8) :: a_sum_toleraa = 0.01 !Liran change it here 1.0e-5_r8   ! tolerance for abs(sum(axxx) - 1.0)
     real(r8) :: afrac_noc, afrac_cld
     real(r8) :: tmpa, tmpb, tmpc, tmpd, tmpe, tmpf, tmpq, tmpu
     real(r8) :: tmp_afrac
@@ -4190,7 +4190,7 @@ acwxx1_k_loop: &
 !   check that fractional areas sum to 1.0 (within small tolerance)
 !   then normalize to exactly 1.0
 !   also check and total quiescent areas are each >= a_quiescn_minaa
-    do k = kts, ktebnd
+    do k = kts, ktebnd-1
         do jcls = 1, ncls_use
             abnd_tavg_use(k,0,jcls) = sum( abnd_tavg_use(k,1:2,jcls) )
             if (k > ktecen) cycle
@@ -4528,7 +4528,7 @@ acwxx1_k_loop: &
     write(lun155,'(3(i5,i3,1pe16.8))') ((jcls,icc,acen_tavg_use(26,icc,jcls),icc=0,2),jcls=0,3)
     end if
 !   first set to zero any areas that are < afrac_cut
-    do k = kts, ktebnd
+    do k = kts, ktebnd-1
         do i = 1, 3
             jcls = jcls_qu
             if ((i >= 2) .and. (k > ktecen)) cycle

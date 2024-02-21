@@ -576,7 +576,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
    integer lchnk                                   ! chunk identifier
    integer ncol                                    ! number of atmospheric columns
    integer nstep                                   ! time steps
-   integer nzero
    type(physics_buffer_desc), pointer :: pbuf_chunk(:) ! temporary pbuf pointer for single chunk
 
    ! convective precipitation variables on pbuf
@@ -1441,31 +1440,28 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_mirror_array_readwrite( 'output_dqi_sponge', crm_output%dqi_sponge,   '' )
       call pam_mirror_array_readwrite( 'output_dqr_sponge', crm_output%dqr_sponge,   '' )
 
-      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cen'       , crm_ecpp_output%wwqui_cen       ,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_cen', crm_ecpp_output%wwqui_cloudy_cen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_bnd'       , crm_ecpp_output%wwqui_bnd       ,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_bnd', crm_ecpp_output%wwqui_cloudy_bnd,   '' )
-      
-      call pam_mirror_array_readwrite( 'ecpp_output_acen', crm_ecpp_output%acen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_abnd', crm_ecpp_output%abnd,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_acen_tf', crm_ecpp_output%acen_tf,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_abnd_tf', crm_ecpp_output%abnd_tf,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_massflxbnd', crm_ecpp_output%massflxbnd,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_rhcen', crm_ecpp_output%rhcen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_qcloudcen', crm_ecpp_output%qcloudcen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_qlsinkcen', crm_ecpp_output%qlsinkcen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_precrcen', crm_ecpp_output%precrcen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_precsolidcen', crm_ecpp_output%precsolidcen,   '' )
-      call pam_mirror_array_readwrite( 'ecpp_output_tbeg', crm_ecpp_output%tbeg,   '' )
-
-
+      if (use_ECPP) then
+         call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cen',        crm_ecpp_output%wwqui_cen,         '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_cen', crm_ecpp_output%wwqui_cloudy_cen,  '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_wwqui_bnd',        crm_ecpp_output%wwqui_bnd,         '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_wwqui_cloudy_bnd', crm_ecpp_output%wwqui_cloudy_bnd,  '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_acen',             crm_ecpp_output%acen,              '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_abnd',             crm_ecpp_output%abnd,              '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_acen_tf',          crm_ecpp_output%acen_tf,           '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_abnd_tf',          crm_ecpp_output%abnd_tf,           '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_massflxbnd',       crm_ecpp_output%massflxbnd,        '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_rhcen',            crm_ecpp_output%rhcen,             '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_qcloudcen',        crm_ecpp_output%qcloudcen,         '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_qlsinkcen',        crm_ecpp_output%qlsinkcen,         '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_precrcen',         crm_ecpp_output%precrcen,          '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_precsolidcen',     crm_ecpp_output%precsolidcen,      '' )
+         call pam_mirror_array_readwrite( 'ecpp_output_tbeg',             crm_ecpp_output%tbeg,              '' )
+      end if
 
       call pam_mirror_array_readonly( 'global_column_id', gcolp )
-      nzero = 0
       call pam_set_option('ncrms', ncrms )
       call pam_set_option('gcm_nlev', pver )
       call pam_set_option('crm_nz',crm_nz )
-      call pam_set_option('crm_nzi',crm_nz+1 )
       call pam_set_option('crm_nx',crm_nx )
       call pam_set_option('crm_ny',crm_ny )
       call pam_set_option('rad_nx',crm_nx_rad)
@@ -1478,13 +1474,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf2d, cam_in, cam_out, 
       call pam_set_option('mode_updnthresh',16 )
       call pam_set_option('plumetype',1 )
       
-      call pam_set_option('ecpp_itavg2',nzero )
-      call pam_set_option('ecpp_ntavg1',nzero)
-      call pam_set_option('ecpp_ntavg2',nzero )
-
-      call pam_set_option('ecpp_NCLASS_CL',nzero )
-      call pam_set_option('ecpp_ndraft_max',nzero )
-      call pam_set_option('ecpp_NCLASS_PR',nzero )
+      if (use_ECPP) then
+         call pam_set_option('use_ecpp',.true. )
+         call pam_set_option('ecpp_itavg2',0 )
+         call pam_set_option('ecpp_ntavg1',0)
+         call pam_set_option('ecpp_ntavg2',0 )
+      else
+         call pam_set_option('use_ecpp',.false. )
+      end if
 
       call pam_register_dimension('gcm_lev',pver)
 

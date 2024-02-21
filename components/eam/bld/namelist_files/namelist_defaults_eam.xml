@@ -1159,6 +1159,8 @@
 <crm_accel_factor use_MMF="1" crm="pam" pam_dycor="awfl" >0</crm_accel_factor>
 <use_crm_accel    use_MMF="1" crm="pam" pam_dycor="awfl" >.false.</use_crm_accel>
 <crm_accel_uv     use_MMF="1" crm="pam" pam_dycor="awfl" >.false.</crm_accel_uv>
+<!-- temporarily disable MSA for ECPP cases until we can make ECPP sampling more robust -->
+<crm_accel_uv     use_MMF="1" crm="pam" use_ECPP="1"     >.false.</crm_accel_uv>
 
 <!-- Cloud fraction -->
 <cldfrc_freeze_dry             >.true.</cldfrc_freeze_dry>

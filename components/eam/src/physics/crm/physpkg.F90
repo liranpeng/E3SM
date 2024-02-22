@@ -1619,6 +1619,7 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   use cloud_diagnostics,      only: cloud_diagnostics_calc
   use crm_ecpp_output_module, only: crm_ecpp_output_type
   use camsrfexch,             only: cam_export
+  use shr_sys_mod,            only: shr_sys_flush
 #if defined( ECPP )
    use module_ecpp_ppdriver2, only: parampollu_driver2
    use module_data_ecpp1,     only: dtstep_pp_input
@@ -1749,6 +1750,7 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
   !-----------------------------------------------------------------------------
   ! ECPP - Explicit-Cloud Parameterized-Pollutant
   !-----------------------------------------------------------------------------
+  !write(iulog,*) 'Liran check begin ECPP',use_ECPP,nstep
 #if defined( ECPP )
   if (use_ECPP) then
 
@@ -1757,13 +1759,16 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
 
     dtstep_pp = dtstep_pp_input
     necpp = dtstep_pp/ztodt
-
-    if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+    !write(iulog,*) 'Liran check begin ECPP in',necpp,dtstep_pp,ztodt
+    !if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+    if (nstep.ne.0) then
 
       ! aerosol tendency from droplet activation and mixing
       ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
       ! So only turbulence mixing is done here.
       call t_startf('crmclouds_mixnuc')
+      !write(iulog,*) 'Liran check crmclouds_mixnuc_tend start'
+      
       call crmclouds_mixnuc_tend(state, ptend, dtstep_pp,           &
                                  cam_in%cflx, pblh, pbuf,           &
                                  crm_ecpp_output%wwqui_cen,         &
@@ -1772,6 +1777,8 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
                                  crm_ecpp_output%wwqui_cloudy_bnd,  &
                                  species_class)
       call physics_update(state, ptend, dtstep_pp, tend)
+      !write(iulog,*) 'Liran check parampollu_driver2 start'
+      call shr_sys_flush(iulog)
       call t_stopf('crmclouds_mixnuc')
 
       ! ECPP interface

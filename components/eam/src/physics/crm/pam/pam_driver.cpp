@@ -36,7 +36,7 @@ extern "C" void pam_driver() {
   auto &coupler = pam_interface::get_coupler();
   //------------------------------------------------------------------------------------------------
   // retreive coupler options
-  printf("Liran check pam_driver 00.\n");
+  //printf("Liran check pam_driver 00.\n");
   auto nens          = coupler.get_option<int>("ncrms");
   auto gcm_nlev      = coupler.get_option<int>("gcm_nlev");
   auto crm_nz        = coupler.get_option<int>("crm_nz");
@@ -52,9 +52,9 @@ extern "C" void pam_driver() {
   bool enable_physics_tend_stats = coupler.get_option<bool>("enable_physics_tend_stats");
   //------------------------------------------------------------------------------------------------
   // set various coupler options
-  printf("Liran check pam_driver 04.\n");
+  //printf("Liran check pam_driver 04.\n");
   coupler.set_option<real>("gcm_physics_dt",gcm_dt);
-  printf("Liran check pam_driver 05.\n");
+  //printf("Liran check pam_driver 05.\n");
   #ifdef MMF_PAM_DPP
   // this is leftover from debugging, but it might still be useful for testing values of crm_per_phys
   coupler.set_option<int>("crm_per_phys",MMF_PAM_DPP);
@@ -70,7 +70,7 @@ extern "C" void pam_driver() {
 
   // set up the grid - this needs to happen before initializing coupler objects
   pam_state_set_grid(coupler);
-  printf("Liran check pam_driver 06.\n");
+  //printf("Liran check pam_driver 06.\n");
   //------------------------------------------------------------------------------------------------
   // get seperate data manager objects for host and device
   auto &dm_device = coupler.get_data_manager_device_readwrite();
@@ -89,10 +89,10 @@ extern "C" void pam_driver() {
   //------------------------------------------------------------------------------------------------
   // update coupler GCM state with input GCM state
   pam_state_update_gcm_state(coupler);
-  printf("Liran check pam_driver 07.\n");
+  //printf("Liran check pam_driver 07.\n");
   // Copy input CRM state (saved by the GCM) to coupler
   pam_state_copy_input_to_coupler(coupler);
-  printf("Liran check pam_driver 08.\n");
+  //printf("Liran check pam_driver 08.\n");
   // // update CRM dry density to match GCM and disable dry density forcing
   // pam_state_update_dry_density(coupler);
 
@@ -101,7 +101,7 @@ extern "C" void pam_driver() {
     pam_debug_init(coupler);
     pam_debug_check_state(coupler, 0, 0);
   }
-  printf("Liran check pam_driver 09.\n");
+  //printf("Liran check pam_driver 09.\n");
   // Compute CRM forcing tendencies
   modules::compute_gcm_forcing_tendencies(coupler);
 
@@ -113,32 +113,32 @@ extern "C" void pam_driver() {
 
   // initialize aggregated variables for output statistics
   pam_statistics_init(coupler);
-  printf("Liran check pam_driver 10.\n");
+  //printf("Liran check pam_driver 10.\n");
   // initialize variables for CRM mean-state acceleration
   //if (use_crm_accel) { pam_accelerate_init(coupler); }
-  printf("Liran check pam_driver 11.\n");
+  //printf("Liran check pam_driver 11.\n");
   // initilize surface "psuedo-friction" (psuedo => doesn't match "real" GCM friction)
   auto input_tau  = dm_host.get<real const,1>("input_tau00").createDeviceCopy();
   auto input_bflx = dm_host.get<real const,1>("input_bflxls").createDeviceCopy();
   modules::surface_friction_init(coupler, input_tau, input_bflx);
-  printf("Liran check pam_driver 11_0.\n");
+  //printf("Liran check pam_driver 11_0.\n");
   // Perturb the CRM at the only on first CRM call
   if (is_first_step) {
     auto global_column_id = dm_host.get<int const,1>("global_column_id").createDeviceCopy();
     modules::perturb_temperature( coupler , global_column_id );
   }
-  printf("Liran check pam_driver 11_1.\n");
+  //printf("Liran check pam_driver 11_1.\n");
   // Microphysics initialization - load lookup tables
   #if defined(P3_CXX)
     if (is_first_step || is_restart) {
       auto am_i_root = coupler.get_option<bool>("am_i_root");
       scream::p3::p3_init(/*write_tables=*/false, am_i_root);
-      printf("Liran check pam_driver 11_2.\n");
+      //printf("Liran check pam_driver 11_2.\n");
       pam::p3_init_lookup_tables(); // Load P3 lookup table data - avoid re-loading every CRM call
-      printf("Liran check pam_driver 11_3.\n");
+      //printf("Liran check pam_driver 11_3.\n");
     }
   #endif
-  printf("Liran check pam_driver 12.\n");
+  //printf("Liran check pam_driver 12.\n");
   // dycor initialization
   bool do_density_save_recall = false;
   #if defined(MMF_PAM_DYCOR_SPAM)
@@ -150,12 +150,12 @@ extern "C" void pam_driver() {
   #elif defined(MMF_PAM_DYCOR_AWFL)
     dycore.declare_current_profile_as_hydrostatic(coupler,/*use_gcm_data=*/true);
   #endif
-  printf("Liran check pam_driver 0.\n");
+  //printf("Liran check pam_driver 0.\n");
   #if defined(ECPP)
-    printf("Liran check pam_driver 1.\n");
+    //printf("Liran check pam_driver 1.\n");
     ecpp_crm_init(coupler);
   #endif
-  printf("Liran check pam_driver 2.\n");
+  //printf("Liran check pam_driver 2.\n");
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
@@ -180,14 +180,14 @@ extern "C" void pam_driver() {
     if (enable_check_state) { pam_debug_check_state(coupler, 1, nstep); }
 
     // run a PAM time step
-    printf("%s %d %d\n", "Liran check nstep:", nstep,nstop);
-    printf("Liran check START run a PAM time step.\n");
+    //printf("%s %d %d\n", "Liran check nstep:", nstep,nstop);
+    //printf("Liran check START run a PAM time step.\n");
     coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
     coupler.run_module( "radiation"                    , [&] (pam::PamCoupler &coupler) {rad   .timeStep(coupler);} );
     if (enable_check_state) { pam_debug_check_state(coupler, 2, nstep); }
 
     // Dynamics
-    printf("Liran check START run a PAM Dynamics.\n");
+    //printf("Liran check START run a PAM Dynamics.\n");
     if (enable_physics_tend_stats) { pam_statistics_save_state(coupler); }
     if (do_density_save_recall)    { pam_state_save_dry_density(coupler); }
     coupler.run_module( "dycore", [&] (pam::PamCoupler &coupler) {dycore.timeStep(coupler);} );
@@ -196,7 +196,7 @@ extern "C" void pam_driver() {
     if (enable_check_state)        { pam_debug_check_state(coupler, 3, nstep); }
 
     // Sponge layer damping
-    printf("Liran check START run a Sponge layer damping.\n");
+    //printf("Liran check START run a Sponge layer damping.\n");
     if (enable_physics_tend_stats) { pam_statistics_save_state(coupler); }
     coupler.run_module( "sponge_layer", modules::sponge_layer );
     if (enable_physics_tend_stats) { pam_statistics_aggregate_tendency(coupler,"sponge"); }
@@ -206,30 +206,30 @@ extern "C" void pam_driver() {
     pam_hyperdiffusion(coupler);
 
     // Turbulence - SHOC
-    printf("Liran check START run SHOC.\n");
+    //printf("Liran check START run SHOC.\n");
     coupler.run_module( "compute_surface_friction", modules::compute_surface_friction );
     if (enable_physics_tend_stats) { pam_statistics_save_state(coupler); }
     coupler.run_module( "sgs", [&] (pam::PamCoupler &coupler) {sgs   .timeStep(coupler);} );
-    printf("Liran check START compute_surface_friction.\n");
+    //printf("Liran check START compute_surface_friction.\n");
     if (enable_physics_tend_stats) { pam_statistics_aggregate_tendency(coupler,"sgs"); }
-    printf("Liran check START pam_statistics_aggregate_tendency.\n");
+    //printf("Liran check START pam_statistics_aggregate_tendency.\n");
     if (enable_check_state)        { pam_debug_check_state(coupler, 5, nstep); }
-    printf("Liran check START pam_debug_check_state.\n");
+    //printf("Liran check START pam_debug_check_state.\n");
 
     // Microphysics - P3
-    printf("Liran check START run P3.\n");
+    //printf("Liran check START run P3.\n");
     if (enable_physics_tend_stats) { pam_statistics_save_state(coupler); }
     coupler.run_module( "micro", [&] (pam::PamCoupler &coupler) {micro .timeStep(coupler);} );
     if (enable_physics_tend_stats) { pam_statistics_aggregate_tendency(coupler,"micro"); }
     if (enable_check_state)        { pam_debug_check_state(coupler, 6, nstep); }
 
-    printf("Liran check ecpp_crm_stat 0.\n");
+    //printf("Liran check ecpp_crm_stat 0.\n");
     #if defined(ECPP)
-      printf("Liran check ecpp_crm_stat 1.\n");
+      //printf("Liran check ecpp_crm_stat 1.\n");
       ecpp_crm_stat(coupler,nstep);
-      printf("Liran check ecpp_crm_stat 2.\n");
+      //printf("Liran check ecpp_crm_stat 2.\n");
     #endif
-    printf("Liran check ecpp_crm_stat 3.\n");
+    //printf("Liran check ecpp_crm_stat 3.\n");
 /*
     // CRM mean state acceleration
     if (use_crm_accel && !coupler.get_option<bool>("crm_acceleration_ceaseflag")) {
@@ -239,24 +239,25 @@ extern "C" void pam_driver() {
 */
     // Diagnostic aggregation
     pam_radiation_timestep_aggregation(coupler);
-    printf("Liran check pam_radiation_timestep_aggregation.\n");
+    //printf("Liran check pam_radiation_timestep_aggregation.\n");
     pam_statistics_timestep_aggregation(coupler);
-    printf("pam_statistics_timestep_aggregation.\n");
+    //printf("pam_statistics_timestep_aggregation.\n");
     etime_crm += crm_dt;
     nstep += 1;
-    printf("%s %d %d\n", "Liran check nstep after plus one:", nstep,nstop);
+    //printf("%s %d %d\n", "Liran check nstep after plus one:", nstep,nstop);
   }
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
   //------------------------------------------------------------------------------------------------
-  printf("%s %d %d\n", "Liran check outside nstep:", nstep,nstop);
+  //printf("%s %d %d\n", "Liran check outside nstep:", nstep,nstop);
+  pam_ecpp_copy_to_host(coupler);
   // Compute CRM feedback tendencies and copy to host
   pam_feedback_compute_tendencies(coupler,gcm_dt);
   pam_feedback_copy_to_host(coupler);
-  
+  //printf("\npam_feedback_copy_to_host\n");  
   // Copy the final CRM state to the host to be saved for next time step
-  pam_state_copy_to_host(coupler);
-
+  pam_state_copy_to_host(coupler); 
+  //printf("\npam_ecpp_copy_to_host\n");  
   // Compute horizontal means of CRM state variables and copy to host
   pam_output_compute_means(coupler);
   pam_output_copy_to_host(coupler);

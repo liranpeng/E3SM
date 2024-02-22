@@ -45,11 +45,11 @@ module module_data_ecpp1
 
    ! these are possible values for mtype_updnenv_ecpp_3d & ..._clm3d & ..._clm3d & ..._clm
    integer, parameter :: mtype_updraft_ecpp=1
-   integer, parameter :: mtype_dndraft_ecpp=2
-   integer, parameter :: mtype_quiescn_ecpp=3
+   integer, parameter :: mtype_dndraft_ecpp=3
+   integer, parameter :: mtype_quiescn_ecpp=2
    integer, parameter :: mtype_upempty_ecpp=-1
-   integer, parameter :: mtype_dnempty_ecpp=-2
-   integer, parameter :: mtype_quempty_ecpp=-3
+   integer, parameter :: mtype_dnempty_ecpp=-3
+   integer, parameter :: mtype_quempty_ecpp=-2
 
    ! these are possible values for mtype_clrcldy_ecpp_3d & ..._clm3d & ..._clm3d & ..._clm
    integer, parameter :: mtype_iscloud_ecpp=11
@@ -128,7 +128,7 @@ module module_data_ecpp1
 
 
    ! index of quiescent transport class
-   integer, parameter :: jcls_quiescn = 1
+   integer, parameter :: jcls_quiescn = 2
    integer, parameter :: jcls_qu = jcls_quiescn
 
 
@@ -208,7 +208,7 @@ module module_data_ecpp1
    integer, save :: parampollu_opt
 
    ! minimum fractional area for total quiescent class   
-   real(r8), save :: a_quiescn_minaa = 0.60_r8  ! min area for initial total quiescent
+   real(r8), save :: a_quiescn_minaa = 0.40_r8  ! min area for initial total quiescent
    real(r8), save :: a_quiescn_minbb = 0.30_r8  ! min area for final   total quiescent
 
 

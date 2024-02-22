@@ -90,7 +90,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf, &
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   call phys_getopts(use_ECPP_out = use_ECPP)
-
+  print*,'Liran check crmclouds_mixnuc_tend 0'
   lchnk = state%lchnk
   ncol  = state%ncol
 
@@ -129,7 +129,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf, &
       end if
     end if
   end do ! m
-
+  print*,'Liran check crmclouds_mixnuc_tend 1',use_ECPP
   itim = pbuf_old_tim_idx ()
   call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
   call pbuf_get_field(pbuf, pbuf_get_index('CLDO'), cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
@@ -238,7 +238,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf, &
       endif
     end do ! i 
   end do ! k
-
+  print*,'Liran check crmclouds_mixnuc_tend 2'
   omega(:ncol,:) = state%omega(:ncol,:) ! should we set omega to be zero ??
 
   call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd,factnum, species_class, .true. )

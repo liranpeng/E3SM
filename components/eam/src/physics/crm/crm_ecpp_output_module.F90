@@ -35,6 +35,7 @@ module crm_ecpp_output_module
       real(crm_rknd), allocatable :: wwqui_bnd          (:,:)  ! vert velocity variance in quiescent class (m2/s2) at layer boundary
       real(crm_rknd), allocatable :: wwqui_cloudy_cen   (:,:)  ! vert velocity variance in quiescent and cloudy class (m2/s2) at layer center
       real(crm_rknd), allocatable :: wwqui_cloudy_bnd   (:,:)  ! vert velocity variance in quiescent and cloudy class (m2/s2) at layer boundary
+      real(crm_rknd), allocatable :: tbeg               (:,:)  !
    end type crm_ecpp_output_type
    !------------------------------------------------------------------------------------------------
 
@@ -59,6 +60,7 @@ contains
       if (.not.allocated(output%praincen        )) allocate(output%praincen        (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
       if (.not.allocated(output%wwqui_cen       )) allocate(output%wwqui_cen       (ncol,nlev) )
       if (.not.allocated(output%wwqui_cloudy_cen)) allocate(output%wwqui_cloudy_cen(ncol,nlev) )
+      if (.not.allocated(output%tbeg))             allocate(output%tbeg            (ncol,nlev) )
       if (.not.allocated(output%abnd            )) allocate(output%abnd            (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
       if (.not.allocated(output%abnd_tf         )) allocate(output%abnd_tf         (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
       if (.not.allocated(output%massflxbnd      )) allocate(output%massflxbnd      (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
@@ -66,6 +68,30 @@ contains
       if (.not.allocated(output%wdownthresh_bnd )) allocate(output%wdownthresh_bnd (ncol,nlev+1) )
       if (.not.allocated(output%wwqui_bnd       )) allocate(output%wwqui_bnd       (ncol,nlev+1) )
       if (.not.allocated(output%wwqui_cloudy_bnd)) allocate(output%wwqui_cloudy_bnd(ncol,nlev+1) )
+
+      output%acen(:,:,:,:,:) = 0.0
+      output%acen_tf(:,:,:,:,:) = 0.0
+      output%rhcen(:,:,:,:,:) = 0.0
+      output%qcloudcen(:,:,:,:,:) = 0.0
+      output%qicecen(:,:,:,:,:) = 0.0
+      output%qlsinkcen(:,:,:,:,:) = 0.0
+      output%precrcen(:,:,:,:,:) = 0.0
+      output%precsolidcen(:,:,:,:,:) = 0.0
+      output%qlsink_afcen(:,:,:,:,:) = 0.0
+      output%qlsink_bfcen(:,:,:,:,:) = 0.0
+      output%qlsink_avgcen(:,:,:,:,:) = 0.0
+      output%praincen (:,:,:,:,:) = 0.0
+      output%wwqui_cen(:,:) = 0.0
+      output%wwqui_cloudy_cen(:,:) = 0.0
+      output%tbeg(:,:) = 0.0
+      output%abnd(:,:,:,:,:) = 0.0
+      output%abnd_tf(:,:,:,:,:) = 0.0
+      output%massflxbnd(:,:,:,:,:) = 0.0
+      output%wupthresh_bnd(:,:) = 0.0
+      output%wdownthresh_bnd(:,:) = 0.0
+      output%wwqui_bnd(:,:) = 0.0
+      output%wwqui_cloudy_bnd(:,:) = 0.0
+
    end subroutine crm_ecpp_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_output_finalize(output)
@@ -91,6 +117,7 @@ contains
       if (allocated(output%wwqui_cloudy_cen)) deallocate(output%wwqui_cloudy_cen)
       if (allocated(output%wwqui_bnd       )) deallocate(output%wwqui_bnd       )
       if (allocated(output%wwqui_cloudy_bnd)) deallocate(output%wwqui_cloudy_bnd)
+      if (allocated(output%tbeg            )) deallocate(output%tbeg            )
    end subroutine crm_ecpp_output_finalize
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_output_copy(output, output_copy, col_beg, col_end)
@@ -121,6 +148,7 @@ contains
       output_copy%wwqui_bnd       (1:ncol_copy,:)       = output%wwqui_bnd       (col_beg:col_end,:)
       output_copy%wwqui_cloudy_cen(1:ncol_copy,:)       = output%wwqui_cloudy_cen(col_beg:col_end,:)
       output_copy%wwqui_cloudy_bnd(1:ncol_copy,:)       = output%wwqui_cloudy_bnd(col_beg:col_end,:)
+      output_copy%tbeg            (1:ncol_copy,:)       = output%tbeg            (col_beg:col_end,:)
    end subroutine crm_ecpp_output_copy
    !------------------------------------------------------------------------------------------------
 

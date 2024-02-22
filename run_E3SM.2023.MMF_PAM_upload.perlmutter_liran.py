@@ -22,25 +22,27 @@ debug_mode = False
 noaccel = False
 gcm_dt = 200
 
-queue = 'debug'  # regular / debug 
+#queue = 'debug'  # regular / debug 
+queue = 'regular'
+
 arch = 'GNUCPU' # GNUCPU / GNUGPU
 
-if queue=='debug'  : stop_opt,stop_n,resub,walltime = 'nsteps',3, 0,'0:30:00'
-# if queue=='regular': stop_opt,stop_n,resub,walltime = 'ndays',1,0,'1:00:00'
+if queue=='debug'  : stop_opt,stop_n,resub,walltime = 'ndays',1, 0,'00:30:00'
+if queue=='regular': stop_opt,stop_n,resub,walltime = 'ndays',6,0,'24:00:00'
 
-# grid = 'ne30pg2_EC30to60E2r2'; num_nodes = 32
-grid = 'ne4pg2_oQU480'; num_nodes = 1
+grid = 'ne30pg2_EC30to60E2r2'; num_nodes = 32
+#grid = 'ne4pg2_oQU480'; num_nodes = 1
 
 # compset = 'F2010-MMF1' # MMF+SAM
 #compset = 'F2010-MMF2' # MMF+PAM
 compset = 'F2010-MMF2-ECPP' # MMF+PAM+ECPP
 
-case = '.'.join(['E3SM','2023-MMF2_TEST_ECPP_PAM-00001',arch,grid,compset])
-crm_nx = 8
+case = '.'.join(['E3SM','2023-MMF2_TEST_ECPP_PAM-00757',arch,grid,compset])
+crm_nx = 64
 crm_ny = 1
-crm_dt = 20
-
-if debug_mode: case += '.debug'
+crm_dt = 5
+crm_dx = 2000
+if debug_mode: case += '.regular'
 
 #---------------------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------------------
@@ -83,6 +85,7 @@ if config :
       file = open('user_nl_eam','w');file.write(f' ncdata = \'{init_file_atm}\' \n');file.close()
    #-------------------------------------------------------
    if 'nlev'   in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -nlev {nlev} \" ')
+   if 'crm_dx' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -crm_nz {crm_dx} \" ')
    if 'crm_nz' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -crm_nz {crm_nz} \" ')
    if 'crm_nx' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -crm_nx {crm_nx} \" ')
    if 'crm_dt' in locals(): run_cmd(f'./xmlchange --append --id CAM_CONFIG_OPTS --val \" -crm_dt {crm_dt} \" ')
@@ -105,32 +108,32 @@ if submit :
    #------------------------------
    # Specify history output frequency and variables
    #------------------------------
-   # file.write(' nhtfrq    = 0,-3,-6 \n')
-   # file.write(' mfilt     = 1,8,4 \n')
-   # file.write(" fincl1 = 'Z3'") # this is for easier use of height axis on profile plots
-   # file.write('\n')
-   # file.write(" fincl2 = 'PS','TS','PSL'")
-   # file.write(          ",'PRECT','TMQ'")
-   # file.write(          ",'PRECC','PRECL'")
-   # file.write(          ",'LHFLX','SHFLX'")             # surface fluxes
-   # file.write(          ",'FSNT','FLNT','FLUT'")        # Net TOM heating rates
-   # file.write(          ",'FLNS','FSNS'")               # Surface rad for total column heating
-   # file.write(          ",'FSNTC','FLNTC'")             # clear sky heating rates for CRE
-   # file.write(          ",'TGCLDLWP','TGCLDIWP'")       # liq & ice water path
-   # file.write(          ",'TUQ','TVQ'")                 # vapor transport for AR tracking
-   # # variables for tracking stuff like hurricanes
-   # file.write(          ",'TBOT:I','QBOT:I','UBOT:I','VBOT:I'") # lowest model leve
-   # file.write(          ",'T900:I','Q900:I','U900:I','V900:I'") # 900mb data
-   # file.write(          ",'T850:I','Q850:I','U850:I','V850:I'") # 850mb data
-   # file.write(          ",'Z300:I','Z500:I'")
-   # file.write(          ",'OMEGA850:I','OMEGA500:I'")
-   # file.write(          ",'U200:I','V200:I'")
-   # file.write('\n')
-   # # 3D variables
-   # file.write(" fincl3 = 'PS','TS','PSL'")
-   # file.write(          ",'T','Q','Z3'")                      # 3D thermodynamic budget components
-   # file.write(          ",'U','V','OMEGA'")                    # 3D velocity components
-   # file.write(          ",'QRL','QRS'")                        # 3D radiative heating profiles
+   file.write(' nhtfrq    = 0,1,-6 \n')
+   file.write(' mfilt     = 1,8,4 \n')
+   file.write(" fincl1 = 'Z3'") # this is for easier use of height axis on profile plots
+   file.write('\n')
+   file.write(" fincl2 = 'PS','TS','PSL'")
+   file.write(          ",'PRECT','TMQ','SO2','so4_a3','CCN1','CCN2','CCN3','CCN4','CCN5','CCN6'")
+   file.write(          ",'PRECC','PRECL','totna500','TOT_CLD_VISTAU','TOT_ICLD_VISTAU'")
+   file.write(          ",'LHFLX','SHFLX','ABSORB','EXTINCT'")             # surface fluxes
+   file.write(          ",'FSNT','FLNT','FLUT','Z3'")        # Net TOM heating rates
+   file.write(          ",'FLNS','FSNS','CLOUD','CLDTOT','CLDLOW','CLDHGH'")               # Surface rad for total column heating
+   file.write(          ",'FSNTC','FLNTC','OMEGA500'")             # clear sky heating rates for CRE
+   file.write(          ",'TGCLDLWP','TGCLDIWP'")       # liq & ice water path
+   file.write(          ",'TUQ','TVQ','TMSO2','TMDMS','TMdst_a1','TMso4_a3'")                 # vapor transport for AR tracking
+   # variables for tracking stuff like hurricanes
+   file.write(          ",'TBOT:I','QBOT:I','UBOT:I','VBOT:I'") # lowest model leve
+   file.write(          ",'T900:I','Q900:I','U900:I','V900:I'") # 900mb data
+   file.write(          ",'T850:I','Q850:I','U850:I','V850:I'") # 850mb data
+   file.write(          ",'Z300:I','Z500:I'")
+   file.write(          ",'OMEGA850:I','OMEGA500:I'")
+   file.write(          ",'U200:I','V200:I'")
+   file.write('\n')
+   # 3D variables
+   file.write(" fincl3 = 'PS','TS','PSL'")
+   file.write(          ",'T','Q','Z3'")                      # 3D thermodynamic budget components
+   file.write(          ",'U','V','OMEGA'")                    # 3D velocity components
+   file.write(          ",'QRL','QRS'")                        # 3D radiative heating profiles
    file.write("linoz_data_path='/global/homes/h/heroplr/inputfile/' \n")
    file.write("linoz_data_file='linoz2004_2006jpl_c081216.nc' \n") 
    # Other namelist stuff

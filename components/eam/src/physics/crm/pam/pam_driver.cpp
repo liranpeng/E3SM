@@ -201,7 +201,7 @@ extern "C" void pam_driver() {
     if (enable_physics_tend_stats) { pam_statistics_aggregate_tendency(coupler,"micro"); }
     if (enable_check_state)        { pam_debug_check_state(coupler, 6, nstep); }
 
-    if (use_ecpp) { ecpp_crm_stat(coupler,nstep); }
+    if (use_ecpp) { pam_ecpp_stat(coupler,nstep); }
     
     // CRM mean state acceleration
     if (use_crm_accel && !coupler.get_option<bool>("crm_acceleration_ceaseflag")) {

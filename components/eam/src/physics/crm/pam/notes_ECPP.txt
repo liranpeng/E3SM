@@ -1,0 +1,37 @@
+
+
+- Create ECPP module to hold global params - i.e. number of classes
+
+outline of ECPP calculations based on ../sam/module_ecpp_crm_driver.F90
+
+
+! Increment the 3-D running sums for averaging period 1.
+call rsums1(...)
+
+! Increment the running sums for the level two variables that are not
+! already incremented. Consolidate from 3-D to 1-D columns.
+call rsums2(...)
+
+! Check if we have reached the end of the level 1 time averaging period.
+if( mod(itavg1,ntavg1) == 0 ) then
+  call categorization_stats(...)
+
+  ! If we want final area categories based on the last avg1 period in each
+  ! avg2 then we need to zero out the running sum just created for the areas
+  ! if it is not the last block of time in ntavg2
+  call zero_out_areas(...)
+
+  ! Done with time level one averages so zero them out for next period.
+  call zero_out_sums1(...)
+
+! End of time level one averaging period
+
+! Check if we have reached the end of a level 2 averaging period.
+if( mod(itavg2,ntavg2) == 0 ) then
+  
+  ! Turn the running sums into averages. ncnt1 in this case is the number
+  ! of calls to categorization_stats during the level 2 averaging period,
+  ! which increment the bnd/cen arrays.
+  call rsums2ToAvg(...)
+
+! End of level two time averaging period

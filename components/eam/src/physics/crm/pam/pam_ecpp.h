@@ -15,9 +15,13 @@ inline void pam_ecpp_init( pam::PamCoupler &coupler ) {
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   //------------------------------------------------------------------------------------------------
+  // set global options
   pam_ecpp_set_options(coupler)
+  // set parameters that control level 1 & 2 averaging intervals
   pam_ecpp_set_sampling_parameters(coupler)
+  // register and allocate ECPP variables in the PAM data manager
   pam_ecpp_register(coupler)
+  // initialize values of allocated ECPP variables
   pam_ecpp_init_values(coupler)
   //------------------------------------------------------------------------------------------------
 }
@@ -25,39 +29,55 @@ inline void pam_ecpp_init( pam::PamCoupler &coupler ) {
 
 // set global options for ECPP
 inline void pam_ecpp_set_options( pam::PamCoupler &coupler ) {
-  
-  //int ntavg1, ntavg2;
-
+  //------------------------------------------------------------------------------------------------
   // mode_updnthresh is meant to allow switching between different
   // categorization approaches, but only one option is implemented 
   // so this parameter is only for reference to old ECPP code
   int mode_updnthresh = 16; 
+  //------------------------------------------------------------------------------------------------
+  // set thresholds to classify transport classes (following Xu et al., 2002, Q.J.R.M.S.)
+  // the maxium of threshold_trans_cld and 0.01*qvs is used to classify transport class
+  coupler.set_option<real>("ecpp_threshold_trans_cld",1e-5) // cloud mix ratio beyond which cell is "cloudy" for transport classes [kg/kg]
+  coupler.set_option<real>("ecpp_threshold_trans_prc",1e-4) // precip mix ratio beyond which cell is raining for transport classes [kg/kg]
+  //------------------------------------------------------------------------------------------------
+  coupler.set_option<real>("ecpp_threshold_up1", 1.0 )
+  coupler.set_option<real>("ecpp_threshold_dn1", 1.0 )
+  coupler.set_option<real>("ecpp_threshold_up2", 0.5 )
+  coupler.set_option<real>("ecpp_threshold_dn2", 0.5 )
+  coupler.set_option<real>("ecpp_threshold_cld", 1e-6 )
+  coupler.set_option<real>("ecpp_threshold_prc", 1e-6 )
+  //------------------------------------------------------------------------------------------------
+  // from module_data_ecpp1.F90 line 142
+  // subclass-average vertical mass fluxes (kg/m2/s) less than aw_draft_cut*rho are treated as zero
+  // NOTE: with a*w = 1e-4 m/s, dz over 1 day = 8.6 m which is small
+  real aw_draft_cut = 1.0e-4;   // m/s 
+  real w_draft_max = 50.0;   // m/s maximum expected updraft
+  // fractional areas below afrac_cut are ignored
+  coupler.set_option<real>("ecpp_afrac_cut", aw_draft_cut / w_draft_max )
+  //------------------------------------------------------------------------------------------------
+  // set coupler options for number of ECPP classes for categorization
 
-  real cloudthresh_trans = 1e-5;
-  real precthresh_trans = 1e-4;
+  coupler.set_option<int>("ecpp_nclass_trx_up",1); // # of upward transport classes
+  coupler.set_option<int>("ecpp_nclass_trx_dn",1); // # of downward transport classes
+  coupler.set_option<int>("ecpp_nclass_trx",   3); // # of transport classes - up / down / quiescent
+  coupler.set_option<int>("ecpp_nclass_cld",   2); // # of cloud classes     - cloudy / clear
+  coupler.set_option<int>("ecpp_nclass_prc",   2); // # of precip classes    - precip / no precip
+  
+  coupler.set_option<int>("ecpp_idx_trx_dn1",  0); // index of first downdraft class
+  coupler.set_option<int>("ecpp_idx_trx_qu1",  1); // index of quiescent class
+  coupler.set_option<int>("ecpp_idx_trx_up1",  2); // index of first updraft class
 
-  int areaavgtype = 1;
-  bool allcomb = false;
-
-  int nupdraft = 0;
-  int ndndraft = 0;
-  ndraft_max = 0;
-
-  int nupdraft_max = 0;  // Note: This variable is initialized but not used in the given code
-  int ndndraft_max = 0;  // Note: This variable is initialized but not used in the given code
-
-  // int NCLASS_TR = 0; // !Num. of transport classes <value defined at line 122>
-  // int ncc_in       = 2; // Nnumber of clear/cloudy sub-calsses
-  int nprcp_in     = 2; // Number of non-precipitating/precipitating sub-classes.
-  nclass_cld = ncc_in;   // Number of cloud classes
-  nclass_prc = nprcp_in; // Number of precipitaion classes
+  coupler.set_option<int>("ecpp_idx_clr",  0); // index of clear class
+  coupler.set_option<int>("ecpp_idx_cld",  1); // index of cloudy class
+  coupler.set_option<int>("ecpp_idx_nop",  0); // index of non-precipitating class
+  coupler.set_option<int>("ecpp_idx_prc",  1); // index of precipitating class
+  
+  // coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
    
   //------------------------------------------------------------------------------------------------
   // Sanity check... <not included NEED TO ADD LATER!!!!>
   // Line 182 to line 210
   //------------------------------------------------------------------------------------------------
-  // Determine number of updrafts and downdrafts (i.e. transport classes)
-
   // Updraft kbase & ktop definition:
   //   ww(i,j,k) > wup_thresh for k=kbase+1 to ktop
   //   ww(i,j,k) <= wup_thresh at k=kbase and k=ktop+1
@@ -70,28 +90,7 @@ inline void pam_ecpp_set_options( pam::PamCoupler &coupler ) {
   // and are affected by the subgrid transport of this downdraft// 
   // For both updrafts and downdrafts:
   //   1 <= kbase < ktop < nz+1
-
-  nupdraft = 1;
-  ndndraft = 1;
-
-  nupdraft_max = std::max(nupdraft_max, nupdraft);
-  ndndraft_max = std::max(ndndraft_max, ndndraft);
-
-  DN1 = nupdraft + 2;  // Setup index of first downdraft class
-  NCLASS_TR = nupdraft + ndndraft + 1;
-
-  ndraft_max = 1 + nupdraft_max + ndndraft_max;
   //------------------------------------------------------------------------------------------------
-  // set coupler options for number of classes for categorization
-
-  // coupler.set_option<int>("ecpp_nclass_cld",nclass_cld);
-  // coupler.set_option<int>("ecpp_nclass_prc",nclass_prc);
-  // coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
-
-  coupler.set_option<int>("ecpp_nclass_cld",nclass_cld);
-  coupler.set_option<int>("ecpp_nclass_prc",nclass_prc);
-  coupler.set_option<int>("ecpp_nclass_trx",2); // NCLASS_TR
-  coupler.set_option<int>("ecpp_ndraft_max",ndraft_max);
 }
 
 
@@ -122,7 +121,10 @@ inline void pam_ecpp_register( pam::PamCoupler &coupler ) {
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   //------------------------------------------------------------------------------------------------
-  dm_device.register_and_allocate<int> ("crm_cnt",       "# of crm timestep count",    {nens}, {"nens"});
+  nclass_trx    = coupler.get_option<int>("ecpp_nclass_trx");
+  nclass_cld    = coupler.get_option<int>("ecpp_nclass_cld");
+  nclass_prc    = coupler.get_option<int>("ecpp_nclass_prc");
+  //------------------------------------------------------------------------------------------------
   dm_device.register_and_allocate<int> ("ecpp_L2_cnt",   "# of level 2 avg count",     {nens}, {"nens"});
   dm_device.register_and_allocate<int> ("ndown",         "# of down count",            {nens}, {"nens"});
   dm_device.register_and_allocate<int> ("nup",           "# of nup count",             {nens}, {"nens"});
@@ -187,15 +189,15 @@ inline void pam_ecpp_register( pam::PamCoupler &coupler ) {
   dm_device.register_and_allocate<real>("ecpp_cat_tbeg",              "<description>", {nz,  nens}, {"z",  "nens"});
   dm_device.register_and_allocate<real>("ecpp_cat_wwqui_bar_bnd",     "<description>", {nz+1,nens}, {"zp1","nens"});
   dm_device.register_and_allocate<real>("ecpp_cat_wwqui_cld_bar_bnd", "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_cen_final",    "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_cen",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_rh_cen",            "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_qcloud_cen",        "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_qice_cen",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_precsolidcen",      "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd_final",    "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_mass_bnd",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_area_cen_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_area_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_rh_cen",            "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_qcloud_cen",        "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_qice_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_precsolidcen",      "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_cat_mass_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
   //------------------------------------------------------------------------------------------------
   // aggregated variables used for categorization
   dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_cen",     "<description>", {nz,  nens}, {"z",  "nens"});
@@ -203,15 +205,15 @@ inline void pam_ecpp_register( pam::PamCoupler &coupler ) {
   dm_device.register_and_allocate<real>("ecpp_sum_tbeg",              "<description>", {nz,  nens}, {"z",  "nens"});
   dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_bnd",     "<description>", {nz+1,nens}, {"zp1","nens"});
   dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cld_bar_bnd", "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_cen_final",    "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_cen",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_rh_cen",            "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_qcloud_cen",        "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_qice_cen",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_precsolidcen",      "<description>", {nclass_prc,ndraft_max,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd_final",    "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_mass_bnd",          "<description>", {nclass_prc,ndraft_max,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_area_cen_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_area_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_rh_cen",            "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_qcloud_cen",        "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_qice_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_precsolidcen",      "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","ndraft_max","nclass_cld","z",  "nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
+  dm_device.register_and_allocate<real>("ecpp_sum_mass_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","ndraft_max","nclass_cld","zp1","nens"});
   //------------------------------------------------------------------------------------------------
 }
 
@@ -226,8 +228,11 @@ inline void pam_ecpp_init_values( pam::PamCoupler &coupler ) {
   auto nx         = coupler.get_option<int>("crm_nx");
   auto ny         = coupler.get_option<int>("crm_ny");
   //------------------------------------------------------------------------------------------------
+  nclass_trx    = coupler.get_option<int>("ecpp_nclass_trx");
+  nclass_cld    = coupler.get_option<int>("ecpp_nclass_cld");
+  nclass_prc    = coupler.get_option<int>("ecpp_nclass_prc");
+  //------------------------------------------------------------------------------------------------
   // initialize 1D quantities
-  auto crm_cnt         = dm_device.get<int, 1>("crm_cnt");
   auto ecpp_L2_cnt     = dm_device.get<int, 1>("ecpp_L2_cnt");
   auto kup_top         = dm_device.get<int, 1>("kup_top");
   auto kdown_top       = dm_device.get<int, 1>("kdown_top");
@@ -244,7 +249,6 @@ inline void pam_ecpp_init_values( pam::PamCoupler &coupler ) {
   auto dndrafttop      = dm_device.get<real,1>("dndrafttop");
   auto dndraftbase     = dm_device.get<real,1>("dndraftbase");
   parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
-    crm_cnt       (icrm) = 0;
     ecpp_L2_cnt   (icrm) = 0;
     kup_top       (icrm) = 0;
     kdown_top     (icrm) = 0;
@@ -290,35 +294,34 @@ inline void pam_ecpp_init_values( pam::PamCoupler &coupler ) {
   auto ecpp_cat_wwqui_cld_bar_bnd = dm_device.get<real,2>("ecpp_cat_wwqui_cld_bar_bnd");
   auto ecpp_cat_tbeg              = dm_device.get<real,2>("ecpp_cat_tbeg");
   parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
-    xkhvsum(iz,iens)                        = 0;
-    nup_k(iz,iens)                          = 0;
-    wup_bar_k(iz,iens)                      = 0;
-    ndown_k(iz,iens)                        = 0;
-    wdown_bar_k(iz,iens)                    = 0;
-    wdown_stddev_k(iz,iens)                 = 0;
-    wup_stddev_k(iz,iens)                   = 0;
-    wup_rms_k(iz,iens)                      = 0;
-    wdown_rms_k(iz,iens)                    = 0;
-    wwqui_all_cen(iz,iens)                  = 0;
-    wwqui_cld_cen(iz,iens)                  = 0;
-    cldtot2d(iz,iens)                       = 0;
-    ecpp_cat_wwqui_bar_cen(iz,iens)         = 0;
-    ecpp_cat_wwqui_cld_bar_cen(iz,iens)     = 0;
-    ecpp_cat_tbeg(iz,iens)                  = 0;
-    ecpp_sum_wwqui_bar_cen(iz,iens)         = 0;
-    ecpp_sum_wwqui_cld_bar_cen(iz,iens)     = 0;
-    ecpp_sum_tbeg(iz,iens)                  = 0;
+    xkhvsum                        (iz,iens) = 0;
+    nup_k                          (iz,iens) = 0;
+    wup_bar_k                      (iz,iens) = 0;
+    ndown_k                        (iz,iens) = 0;
+    wdown_bar_k                    (iz,iens) = 0;
+    wdown_stddev_k                 (iz,iens) = 0;
+    wup_stddev_k                   (iz,iens) = 0;
+    wup_rms_k                      (iz,iens) = 0;
+    wdown_rms_k                    (iz,iens) = 0;
+    wwqui_all_cen                  (iz,iens) = 0;
+    wwqui_cld_cen                  (iz,iens) = 0;
+    cldtot2d                       (iz,iens) = 0;
+    ecpp_cat_wwqui_bar_cen         (iz,iens) = 0;
+    ecpp_cat_wwqui_cld_bar_cen     (iz,iens) = 0;
+    ecpp_cat_tbeg                  (iz,iens) = 0;
+    ecpp_sum_wwqui_bar_cen         (iz,iens) = 0;
+    ecpp_sum_wwqui_cld_bar_cen     (iz,iens) = 0;
+    ecpp_sum_tbeg                  (iz,iens) = 0;
   });
-
   parallel_for(SimpleBounds<2>(nz+1,nens), YAKL_LAMBDA (int iz, int iens) {
-    wwqui_all_bnd(iz,iens)                  = 0; 
-    wwqui_cld_bnd(iz,iens)                  = 0;
-    wup_rms_ksmo(iz,iens)                   = 0;
-    wdown_rms_ksmo(iz,iens)                 = 0;
-    ecpp_cat_wwqui_bar_bnd(iz,iens)         = 0;
-    ecpp_cat_wwqui_cld_bar_bnd(iz,iens)     = 0;
-    ecpp_sum_wwqui_bar_bnd(iz,iens)         = 0;
-    ecpp_sum_wwqui_cld_bar_bnd(iz,iens)     = 0;
+    wwqui_all_bnd                  (iz,iens)= 0; 
+    wwqui_cld_bnd                  (iz,iens)= 0;
+    wup_rms_ksmo                   (iz,iens)= 0;
+    wdown_rms_ksmo                 (iz,iens)= 0;
+    ecpp_cat_wwqui_bar_bnd         (iz,iens)= 0;
+    ecpp_cat_wwqui_cld_bar_bnd     (iz,iens)= 0;
+    ecpp_sum_wwqui_bar_bnd         (iz,iens)= 0;
+    ecpp_sum_wwqui_cld_bar_bnd     (iz,iens)= 0;
   });
   //------------------------------------------------------------------------------------------------
   // initialize 4D quantities
@@ -345,79 +348,135 @@ inline void pam_ecpp_init_values( pam::PamCoupler &coupler ) {
   auto prainsum1            = dm_device.get<real,4>("prainsum1");
   auto qvssum1              = dm_device.get<real,4>("qvssum1");
   parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
-    qlsink_bf(iz,iy,ix,iens)          = 0;
-    prain(iz,iy,ix,iens)              = 0;
-    qcloud_bf(iz,iy,ix,iens)          = 0;
-    qcloudsum1(iz,iy,ix,iens)         = 0;
-    qcloud_bfsum1(iz,iy,ix,iens)      = 0;
-    qrainsum1(iz,iy,ix,iens)          = 0;
-    qicesum1(iz,iy,ix,iens)           = 0;
-    qsnowsum1(iz,iy,ix,iens)          = 0;
-    qgraupsum1(iz,iy,ix,iens)         = 0;
-    qlsinksum1(iz,iy,ix,iens)         = 0;
-    precrsum1(iz,iy,ix,iens)          = 0;
-    precsolidsum1(iz,iy,ix,iens)      = 0;
-    precallsum1(iz,iy,ix,iens)        = 0;
-    altsum1(iz,iy,ix,iens)            = 0;
-    rhsum1(iz,iy,ix,iens)             = 0;
-    cf3dsum1(iz,iy,ix,iens)           = 0;
-    ecppwwsum1(iz,iy,ix,iens)         = 0;
-    ecppwwsqsum1(iz,iy,ix,iens)       = 0;
-    tkesgssum1(iz,iy,ix,iens)         = 0;
-    qlsink_bfsum1(iz,iy,ix,iens)      = 0;
-    prainsum1(iz,iy,ix,iens)          = 0;
-    qvssum1(iz,iy,ix,iens)            = 0;
+    qlsink_bf     (iz,iy,ix,iens) = 0;
+    prain         (iz,iy,ix,iens) = 0;
+    qcloud_bf     (iz,iy,ix,iens) = 0;
+    qcloudsum1    (iz,iy,ix,iens) = 0;
+    qcloud_bfsum1 (iz,iy,ix,iens) = 0;
+    qrainsum1     (iz,iy,ix,iens) = 0;
+    qicesum1      (iz,iy,ix,iens) = 0;
+    qsnowsum1     (iz,iy,ix,iens) = 0;
+    qgraupsum1    (iz,iy,ix,iens) = 0;
+    qlsinksum1    (iz,iy,ix,iens) = 0;
+    precrsum1     (iz,iy,ix,iens) = 0;
+    precsolidsum1 (iz,iy,ix,iens) = 0;
+    precallsum1   (iz,iy,ix,iens) = 0;
+    altsum1       (iz,iy,ix,iens) = 0;
+    rhsum1        (iz,iy,ix,iens) = 0;
+    cf3dsum1      (iz,iy,ix,iens) = 0;
+    ecppwwsum1    (iz,iy,ix,iens) = 0;
+    ecppwwsqsum1  (iz,iy,ix,iens) = 0;
+    tkesgssum1    (iz,iy,ix,iens) = 0;
+    qlsink_bfsum1 (iz,iy,ix,iens) = 0;
+    prainsum1     (iz,iy,ix,iens) = 0;
+    qvssum1       (iz,iy,ix,iens) = 0;
   });
   //------------------------------------------------------------------------------------------------
   // initialize 5D quantities
-  auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
-  auto ecpp_sum_area_cen              = dm_device.get<real,5>("ecpp_sum_area_cen");
-  auto ecpp_sum_area_bnd_final        = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
-  auto ecpp_sum_area_bnd              = dm_device.get<real,5>("ecpp_sum_area_bnd");
-  auto ecpp_sum_mass_bnd              = dm_device.get<real,5>("ecpp_sum_mass_bnd");
-  auto ecpp_sum_rh_cen                = dm_device.get<real,5>("ecpp_sum_rh_cen");
-  auto ecpp_sum_qcloud_cen            = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
-  auto ecpp_sum_qice_cen              = dm_device.get<real,5>("ecpp_sum_qice_cen");
-  auto ecpp_sum_precsolidcen          = dm_device.get<real,5>("ecpp_sum_precsolidcen");
-  
-  auto ecpp_cat_area_cen_final        = dm_device.get<real,5>("ecpp_cat_area_cen_final");
-  auto ecpp_cat_area_cen              = dm_device.get<real,5>("ecpp_cat_area_cen");
-  auto ecpp_cat_area_bnd_final        = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
-  auto ecpp_cat_area_bnd              = dm_device.get<real,5>("ecpp_cat_area_bnd");
-  auto ecpp_cat_mass_bnd              = dm_device.get<real,5>("ecpp_cat_mass_bnd");
-  auto ecpp_cat_rh_cen                = dm_device.get<real,5>("ecpp_cat_rh_cen");
-  auto ecpp_cat_qcloud_cen            = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
-  auto ecpp_cat_qice_cen              = dm_device.get<real,5>("ecpp_cat_qice_cen");
-  auto ecpp_cat_precsolidcen          = dm_device.get<real,5>("ecpp_cat_precsolidcen");
-
-  parallel_for(SimpleBounds<5>(nclass_prc,ndraft_max,nclass_cld,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
-    ecpp_cat_area_cen_final(iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_area_cen(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_cat_rh_cen(iPR,iTR,iCL,k,icrm)         = 0;
-    ecpp_cat_qcloud_cen(iPR,iTR,iCL,k,icrm)     = 0;
-    ecpp_cat_qice_cen(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_cat_precsolidcen(iPR,iTR,iCL,k,icrm)   = 0;
-    ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)         = 0;
-    ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)     = 0;
-    ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)   = 0;
+  auto ecpp_sum_area_cen_final   = dm_device.get<real,5>("ecpp_sum_area_cen_final");
+  auto ecpp_sum_area_cen         = dm_device.get<real,5>("ecpp_sum_area_cen");
+  auto ecpp_sum_area_bnd_final   = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
+  auto ecpp_sum_area_bnd         = dm_device.get<real,5>("ecpp_sum_area_bnd");
+  auto ecpp_sum_mass_bnd         = dm_device.get<real,5>("ecpp_sum_mass_bnd");
+  auto ecpp_sum_rh_cen           = dm_device.get<real,5>("ecpp_sum_rh_cen");
+  auto ecpp_sum_qcloud_cen       = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
+  auto ecpp_sum_qice_cen         = dm_device.get<real,5>("ecpp_sum_qice_cen");
+  auto ecpp_sum_precsolidcen     = dm_device.get<real,5>("ecpp_sum_precsolidcen");
+  auto ecpp_cat_area_cen_final   = dm_device.get<real,5>("ecpp_cat_area_cen_final");
+  auto ecpp_cat_area_cen         = dm_device.get<real,5>("ecpp_cat_area_cen");
+  auto ecpp_cat_area_bnd_final   = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
+  auto ecpp_cat_area_bnd         = dm_device.get<real,5>("ecpp_cat_area_bnd");
+  auto ecpp_cat_mass_bnd         = dm_device.get<real,5>("ecpp_cat_mass_bnd");
+  auto ecpp_cat_rh_cen           = dm_device.get<real,5>("ecpp_cat_rh_cen");
+  auto ecpp_cat_qcloud_cen       = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
+  auto ecpp_cat_qice_cen         = dm_device.get<real,5>("ecpp_cat_qice_cen");
+  auto ecpp_cat_precsolidcen     = dm_device.get<real,5>("ecpp_cat_precsolidcen");
+  parallel_for(SimpleBounds<5>(nclass_prc,nclass_trx,nclass_cld,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
+    ecpp_cat_area_cen_final   (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_area_cen         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_rh_cen           (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_qcloud_cen       (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_qice_cen         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_precsolidcen     (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_area_cen_final   (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_area_cen         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_rh_cen           (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_qcloud_cen       (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_qice_cen         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_precsolidcen     (iPR,iTR,iCL,k,icrm) = 0;
   });
-
-  parallel_for(SimpleBounds<5>(nclass_prc,ndraft_max,nclass_cld,nz+1,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
-    ecpp_cat_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_cat_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       = 0;
-    ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       = 0;
+  parallel_for(SimpleBounds<5>(nclass_prc,nclass_trx,nclass_cld,nz+1,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
+    ecpp_cat_area_bnd_final   (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_area_bnd         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_cat_mass_bnd         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_area_bnd_final   (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_area_bnd         (iPR,iTR,iCL,k,icrm) = 0;
+    ecpp_sum_mass_bnd         (iPR,iTR,iCL,k,icrm) = 0;
   });
   //------------------------------------------------------------------------------------------------
 }
 
+
+// inline void pam_ecpp_update_L1_sums( pam::PamCoupler &coupler) {
+//   using yakl::c::parallel_for;
+//   using yakl::c::SimpleBounds;
+//   auto &dm_device      = coupler.get_data_manager_device_readwrite();
+//   auto &dm_host        = coupler.get_data_manager_host_readwrite();
+//   auto nens            = coupler.get_option<int>("ncrms");
+//   auto nx              = coupler.get_option<int>("crm_nx");
+//   auto ny              = coupler.get_option<int>("crm_ny");
+//   auto nz              = coupler.get_option<int>("crm_nz");
+//   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
+//   //------------------------------------------------------------------------------------------------
+//   //------------------------------------------------------------------------------------------------
+// }
+
+// inline void pam_ecpp_update_L2_sums( pam::PamCoupler &coupler) {
+//   using yakl::c::parallel_for;
+//   using yakl::c::SimpleBounds;
+//   auto &dm_device      = coupler.get_data_manager_device_readwrite();
+//   auto &dm_host        = coupler.get_data_manager_host_readwrite();
+//   auto nens            = coupler.get_option<int>("ncrms");
+//   auto nx              = coupler.get_option<int>("crm_nx");
+//   auto ny              = coupler.get_option<int>("crm_ny");
+//   auto nz              = coupler.get_option<int>("crm_nz");
+//   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
+//   //------------------------------------------------------------------------------------------------
+//   //------------------------------------------------------------------------------------------------
+// }
+
+// inline void pam_ecpp_transport_classification( pam::PamCoupler &coupler) {
+//   using yakl::c::parallel_for;
+//   using yakl::c::SimpleBounds;
+//   auto &dm_device      = coupler.get_data_manager_device_readwrite();
+//   auto &dm_host        = coupler.get_data_manager_host_readwrite();
+//   auto nens            = coupler.get_option<int>("ncrms");
+//   auto nx              = coupler.get_option<int>("crm_nx");
+//   auto ny              = coupler.get_option<int>("crm_ny");
+//   auto nz              = coupler.get_option<int>("crm_nz");
+//   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
+//   //------------------------------------------------------------------------------------------------
+//   //------------------------------------------------------------------------------------------------
+// }
+
+// inline void pam_ecpp_get_masks( pam::PamCoupler &coupler) {
+//   using yakl::c::parallel_for;
+//   using yakl::c::SimpleBounds;
+//   auto &dm_device      = coupler.get_data_manager_device_readwrite();
+//   auto &dm_host        = coupler.get_data_manager_host_readwrite();
+//   auto nens            = coupler.get_option<int>("ncrms");
+//   auto nx              = coupler.get_option<int>("crm_nx");
+//   auto ny              = coupler.get_option<int>("crm_ny");
+//   auto nz              = coupler.get_option<int>("crm_nz");
+//   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
+//   //------------------------------------------------------------------------------------------------
+//   //------------------------------------------------------------------------------------------------
+// }
+
+
+
 // allocate and initialize variables
-inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
+inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
   using yakl::c::parallel_for;
   using yakl::c::SimpleBounds;
   auto &dm_device      = coupler.get_data_manager_device_readwrite();
@@ -427,94 +486,90 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto ny              = coupler.get_option<int>("crm_ny");
   auto nz              = coupler.get_option<int>("crm_nz");
   auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  auto ntavg1          = coupler.get_option<int>("ecpp_ntavg1");
-  auto ntavg2          = coupler.get_option<int>("ecpp_ntavg2");
-  auto mode_updnthresh = coupler.get_option<int>("mode_updnthresh");
-  auto plumetype       = coupler.get_option<int>("plumetype");
-  //auto nclass_cld       = coupler.get_option<int>("ecpp_nclass_cld");
-  auto ndraft_max      = coupler.get_option<int>("ecpp_ndraft_max");
-  //auto nclass_prc       = coupler.get_option<int>("ecpp_nclass_prc");
-  auto gcm_dt          = coupler.get_option<real>("gcm_dt");
-  auto crm_dt          = coupler.get_option<real>("crm_dt");
-  int nupdraft  = 1;
-  int ndndraft  = 1;
-  int CLR       = 0; // Clear sub-class
-  int CLD       = 1; // Cloudy sub-class
-  int PRN       = 0; // Not precipitating sub-class
-  int PRY       = 1; // Is precipitating sub-class
-  int DN1       = 0; // !First index of downward classes
-  int QUI       = 1; // Quiescent class
-  int UP1       = 2; // First index for upward classes
-  int ncc_in    = 2; // Nnumber of clear/cloudy sub-calsses
-  int nprcp_in  = 2; // Number of non-precipitating/precipitating sub-classes.
-  int nclass_cld = ncc_in; // Number of cloud classes
-  int nclass_prc = nprcp_in; // Number of precipitaion classes
-  int dndn = 0;
-  int dnup = 0;
-  dndn = ndndraft;
-  dnup = nupdraft;
-
-  //printf("%s %.2f\n", "Liran check gcm_dt:",gcm_dt);
-  //printf("%s %.2f\n", "Liran check crm_dt:", crm_dt);
-  
-  //printf("\nValue of ndraft_max 2: %d ", ndraft_max);
-  //printf("\nValue of dndn: %d: ", dndn);
-  //printf("\nValue of dnup: %d: ", dnup);
-  //printf("\nValue of nclass_cld: %d: ", nclass_cld);
-  //printf("\nValue of nclass_prc: %d: ", nclass_prc);
-
   //------------------------------------------------------------------------------------------------
-  auto crm_cnt                  = dm_device.get<int,1>("crm_cnt");
-  auto ecpp_L2_cnt              = dm_device.get<int,1>("ecpp_L2_cnt");
-  auto ndown                    = dm_device.get<int,1>("ndown");
-  auto nup                      = dm_device.get<int,1>("nup");
-  auto kup_top                  = dm_device.get<int,1>("kup_top");
-  auto kdown_top                = dm_device.get<int,1>("kdown_top");
-  auto nup_k                    = dm_device.get<int, 2>("nup_k");
-  auto ndown_k                  = dm_device.get<int, 2>("ndown_k");
-  auto wdown_bar                = dm_device.get<real,1>("wdown_bar");
-  auto wdown_stddev             = dm_device.get<real,1>("wdown_stddev");
-  auto wup_stddev               = dm_device.get<real,1>("wup_stddev");
-  auto wup_rms                  = dm_device.get<real,1>("wup_rms");
-  auto wdown_rms                = dm_device.get<real,1>("wdown_rms");
-  auto wup_bar                  = dm_device.get<real,1>("wup_bar");
-  auto qcloudsum1               = dm_device.get<real, 4>("qcloudsum1");
-  auto qcloud_bfsum1            = dm_device.get<real, 4>("qcloud_bfsum1");
-  auto qrainsum1                = dm_device.get<real, 4>("qrainsum1");
-  auto qicesum1                 = dm_device.get<real, 4>("qicesum1");
-  auto qsnowsum1                = dm_device.get<real, 4>("qsnowsum1");
-  auto qgraupsum1               = dm_device.get<real, 4>("qgraupsum1");
-  auto qlsinksum1               = dm_device.get<real, 4>("qlsinksum1");
-  auto precrsum1                = dm_device.get<real, 4>("precrsum1");
-  auto precsolidsum1            = dm_device.get<real, 4>("precsolidsum1");
-  auto precallsum1              = dm_device.get<real, 4>("precallsum1");
-  auto altsum1                  = dm_device.get<real, 4>("altsum1");
-  auto rhsum1                   = dm_device.get<real, 4>("rhsum1");
-  auto cf3dsum1                 = dm_device.get<real, 4>("cf3dsum1");
-  auto ecppwwsum1               = dm_device.get<real, 4>("ecppwwsum1");
-  auto ecppwwsqsum1             = dm_device.get<real, 4>("ecppwwsqsum1");
-  auto tkesgssum1               = dm_device.get<real, 4>("tkesgssum1");
-  auto qlsink_bfsum1            = dm_device.get<real, 4>("qlsink_bfsum1");
-  auto prainsum1                = dm_device.get<real, 4>("prainsum1");
-  auto qvssum1                  = dm_device.get<real, 4>("qvssum1");
-  auto wup_bar_k                = dm_device.get<real, 2>("wup_bar_k");
-  auto wdown_bar_k              = dm_device.get<real, 2>("wdown_bar_k");
-  auto wdown_stddev_k           = dm_device.get<real, 2>("wdown_stddev_k");
-  auto wup_stddev_k             = dm_device.get<real, 2>("wup_stddev_k");
-  auto wup_rms_k                = dm_device.get<real, 2>("wup_rms_k");
-  auto wdown_rms_k              = dm_device.get<real, 2>("wdown_rms_k");
-  auto wup_rms_ksmo             = dm_device.get<real, 2>("wup_rms_ksmo");
-  auto wdown_rms_ksmo           = dm_device.get<real, 2>("wdown_rms_ksmo");
-  auto wwqui_all_cen            = dm_device.get<real, 2>("wwqui_all_cen");
-  auto wwqui_all_bnd            = dm_device.get<real, 2>("wwqui_all_bnd");
-  auto wwqui_cld_cen            = dm_device.get<real, 2>("wwqui_cld_cen");
-  auto wwqui_cld_bnd            = dm_device.get<real, 2>("wwqui_cld_bnd");
-  auto cldtot2d                 = dm_device.get<real, 2>("cldtot2d");
-
+  auto ntavg1           = coupler.get_option<int>("ecpp_ntavg1");
+  auto ntavg2           = coupler.get_option<int>("ecpp_ntavg2");
+  auto mode_updnthresh  = coupler.get_option<int>("mode_updnthresh");
+  auto nupdraft         = coupler.get_option<int>("ecpp_nclass_trx_up");
+  auto ndndraft         = coupler.get_option<int>("ecpp_nclass_trx_dn");
+  auto nclass_cld       = coupler.get_option<int>("ecpp_nclass_cld");
+  auto nclass_trx       = coupler.get_option<int>("ecpp_nclass_trx");
+  auto nclass_prc       = coupler.get_option<int>("ecpp_nclass_prc");
+  auto DN1              = coupler.set_option<int>("ecpp_idx_trx_dn1");
+  auto QUI              = coupler.set_option<int>("ecpp_idx_trx_qu1");
+  auto UP1              = coupler.set_option<int>("ecpp_idx_trx_up1");
+  auto CLR              = coupler.get_option<int>("ecpp_idx_clr"); 
+  auto CLD              = coupler.get_option<int>("ecpp_idx_cld"); 
+  auto PRN              = coupler.get_option<int>("ecpp_idx_nop"); 
+  auto PRY              = coupler.get_option<int>("ecpp_idx_prc"); 
+  // auto ndraft_max      = coupler.get_option<int>("ecpp_ndraft_max");
+  //------------------------------------------------------------------------------------------------
+  auto threshold_trans_cld = coupler.get_option<real>("ecpp_threshold_trans_cld")
+  auto threshold_trans_prc = coupler.get_option<real>("ecpp_threshold_trans_prc")
+  auto threshold_up1       = coupler.get_option<real>("ecpp_threshold_up1")
+  auto threshold_dn1       = coupler.get_option<real>("ecpp_threshold_dn1")
+  auto threshold_up2       = coupler.get_option<real>("ecpp_threshold_up2")
+  auto threshold_dn2       = coupler.get_option<real>("ecpp_threshold_dn2")
+  auto threshold_cld       = coupler.get_option<real>("ecpp_threshold_cld")
+  auto threshold_prc       = coupler.get_option<real>("ecpp_threshold_prc")
+  auto afrac_cut           = coupler.get_option<real>("ecpp_afrac_cut")
+  //------------------------------------------------------------------------------------------------
+  // get misc ECPP variables
+  auto ecpp_L2_cnt                    = dm_device.get<int, 1>("ecpp_L2_cnt");
+  auto ndown                          = dm_device.get<int, 1>("ndown");
+  auto nup                            = dm_device.get<int, 1>("nup");
+  auto kup_top                        = dm_device.get<int, 1>("kup_top");
+  auto kdown_top                      = dm_device.get<int, 1>("kdown_top");
+  auto nup_k                          = dm_device.get<int, 2>("nup_k");
+  auto ndown_k                        = dm_device.get<int, 2>("ndown_k");
+  auto wdown_bar                      = dm_device.get<real,1>("wdown_bar");
+  auto wdown_stddev                   = dm_device.get<real,1>("wdown_stddev");
+  auto wup_stddev                     = dm_device.get<real,1>("wup_stddev");
+  auto wup_rms                        = dm_device.get<real,1>("wup_rms");
+  auto wdown_rms                      = dm_device.get<real,1>("wdown_rms");
+  auto wup_bar                        = dm_device.get<real,1>("wup_bar");
+  auto qcloudsum1                     = dm_device.get<real,4>("qcloudsum1");
+  auto qcloud_bfsum1                  = dm_device.get<real,4>("qcloud_bfsum1");
+  auto qrainsum1                      = dm_device.get<real,4>("qrainsum1");
+  auto qicesum1                       = dm_device.get<real,4>("qicesum1");
+  auto qsnowsum1                      = dm_device.get<real,4>("qsnowsum1");
+  auto qgraupsum1                     = dm_device.get<real,4>("qgraupsum1");
+  auto qlsinksum1                     = dm_device.get<real,4>("qlsinksum1");
+  auto precrsum1                      = dm_device.get<real,4>("precrsum1");
+  auto precsolidsum1                  = dm_device.get<real,4>("precsolidsum1");
+  auto precallsum1                    = dm_device.get<real,4>("precallsum1");
+  auto altsum1                        = dm_device.get<real,4>("altsum1");
+  auto rhsum1                         = dm_device.get<real,4>("rhsum1");
+  auto cf3dsum1                       = dm_device.get<real,4>("cf3dsum1");
+  auto ecppwwsum1                     = dm_device.get<real,4>("ecppwwsum1");
+  auto ecppwwsqsum1                   = dm_device.get<real,4>("ecppwwsqsum1");
+  auto tkesgssum1                     = dm_device.get<real,4>("tkesgssum1");
+  auto qlsink_bfsum1                  = dm_device.get<real,4>("qlsink_bfsum1");
+  auto prainsum1                      = dm_device.get<real,4>("prainsum1");
+  auto qvssum1                        = dm_device.get<real,4>("qvssum1");
+  auto wup_bar_k                      = dm_device.get<real,2>("wup_bar_k");
+  auto wdown_bar_k                    = dm_device.get<real,2>("wdown_bar_k");
+  auto wdown_stddev_k                 = dm_device.get<real,2>("wdown_stddev_k");
+  auto wup_stddev_k                   = dm_device.get<real,2>("wup_stddev_k");
+  auto wup_rms_k                      = dm_device.get<real,2>("wup_rms_k");
+  auto wdown_rms_k                    = dm_device.get<real,2>("wdown_rms_k");
+  auto wup_rms_ksmo                   = dm_device.get<real,2>("wup_rms_ksmo");
+  auto wdown_rms_ksmo                 = dm_device.get<real,2>("wdown_rms_ksmo");
+  auto wwqui_all_cen                  = dm_device.get<real,2>("wwqui_all_cen");
+  auto wwqui_all_bnd                  = dm_device.get<real,2>("wwqui_all_bnd");
+  auto wwqui_cld_cen                  = dm_device.get<real,2>("wwqui_cld_cen");
+  auto wwqui_cld_bnd                  = dm_device.get<real,2>("wwqui_cld_bnd");
+  auto cldtot2d                       = dm_device.get<real,2>("cldtot2d");
+  auto updraftbase                    = dm_device.get<real,1>("updraftbase");
+  auto updrafttop                     = dm_device.get<real,1>("updrafttop");
+  auto dndrafttop                     = dm_device.get<real,1>("dndrafttop");
+  auto dndraftbase                    = dm_device.get<real,1>("dndraftbase");
+  //------------------------------------------------------------------------------------------------
+  // ECPP running sums
   auto ecpp_sum_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
-  auto ecpp_sum_wwqui_cld_bar_cen  = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_cen");
+  auto ecpp_sum_wwqui_cld_bar_cen     = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_cen");
   auto ecpp_sum_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
-  auto ecpp_sum_wwqui_cld_bar_bnd  = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_bnd");
+  auto ecpp_sum_wwqui_cld_bar_bnd     = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_bnd");
   auto ecpp_sum_tbeg                  = dm_device.get<real,2>("ecpp_sum_tbeg");
   auto ecpp_sum_area_cen_final        = dm_device.get<real,5>("ecpp_sum_area_cen_final");
   auto ecpp_sum_area_cen              = dm_device.get<real,5>("ecpp_sum_area_cen");
@@ -525,6 +580,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto ecpp_sum_qcloud_cen            = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
   auto ecpp_sum_qice_cen              = dm_device.get<real,5>("ecpp_sum_qice_cen");
   auto ecpp_sum_precsolidcen          = dm_device.get<real,5>("ecpp_sum_precsolidcen");  
+  //------------------------------------------------------------------------------------------------
+  // ECPP categorized variables
   auto ecpp_cat_wwqui_bar_cen         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_cen");
   auto ecpp_cat_wwqui_bar_bnd         = dm_device.get<real,2>("ecpp_cat_wwqui_bar_bnd");
   auto ecpp_cat_wwqui_cld_bar_cen     = dm_device.get<real,2>("ecpp_cat_wwqui_cld_bar_cen");
@@ -539,28 +596,23 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   auto ecpp_cat_qice_cen              = dm_device.get<real,5>("ecpp_cat_qice_cen");
   auto ecpp_cat_precsolidcen          = dm_device.get<real,5>("ecpp_cat_precsolidcen");
   auto ecpp_cat_tbeg                  = dm_device.get<real,2>("ecpp_cat_tbeg");
-  // Get values from PAM cloud fields
-  auto host_state_shoc_tk       = dm_host.get<real,4>("state_shoc_tk").createDeviceCopy();
-  auto host_state_shoc_tkh      = dm_host.get<real,4>("state_shoc_tkh").createDeviceCopy();
-  
-  auto host_state_qv            = dm_host.get<real,4>("state_qv").createDeviceCopy();
-  auto host_state_qc            = dm_host.get<real,4>("state_qc").createDeviceCopy();
-  auto host_state_qr            = dm_host.get<real,4>("state_qr").createDeviceCopy();
-  auto host_state_qi            = dm_host.get<real,4>("state_qi").createDeviceCopy();
-  auto crm_temp                 = dm_device.get<real,4>("temp");
-  auto qvloud                   = dm_device.get<real,4>("water_vapor");
-  auto qcloud                   = dm_device.get<real,4>("cloud_water");
-  auto qrloud                   = dm_device.get<real,4>("rain");
-  auto qiloud                   = dm_device.get<real,4>("ice");
-  auto qirloud                  = dm_device.get<real,4>("ice_rime");
-  auto ref_pres                 = dm_device.get<real,2>("ref_pres");
-  auto crm_wvel                 = dm_device.get<real,4>("wvel");
-  auto updraftbase              = dm_device.get<real,1>("updraftbase");
-  auto updrafttop               = dm_device.get<real,1>("updrafttop");
-  auto dndrafttop               = dm_device.get<real,1>("dndrafttop");
-  auto dndraftbase              = dm_device.get<real,1>("dndraftbase");
-  auto cldfrac                  = dm_device.get<real,4>( "cldfrac");
-  auto host_state_shoc_tke      = dm_host.get<real,4>("state_shoc_tke").createDeviceCopy();
+  //------------------------------------------------------------------------------------------------
+  // Get PAM state variables
+  auto crm_rho_d                      = dm_device.get<real,4>("density_dry");
+  auto crm_rho_v                      = dm_device.get<real,4>("water_vapor");
+  auto crm_rho_c                      = dm_device.get<real,4>("cloud_water");
+  auto crm_rho_r                      = dm_device.get<real,4>("rain");
+  auto crm_rho_i                      = dm_device.get<real,4>("ice");
+  auto crm_temp                       = dm_device.get<real,4>("temp");
+  // auto qvloud                         = dm_device.get<real,4>("water_vapor");
+  // auto qcloud                         = dm_device.get<real,4>("cloud_water");
+  // auto qrloud                         = dm_device.get<real,4>("rain");
+  // auto qiloud                         = dm_device.get<real,4>("ice");
+  // auto qirloud                        = dm_device.get<real,4>("ice_rime");
+  auto ref_pres                       = dm_device.get<real,2>("ref_pres");
+  auto crm_wvel                       = dm_device.get<real,4>("wvel");
+  auto cldfrac                        = dm_device.get<real,4>("cldfrac");
+  auto shoc_tke                       = dm_device.get<real,4>("tke");
   //------------------------------------------------------------------------------------------------
   // Define variables used for categorization
   real7d mask_bnd            ("mask_bnd",            nz+1,ny,nx,nens,nclass_cld,ndraft_max,nclass_prc);
@@ -624,43 +676,6 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   int1d  maskpry_bnd         ("maskpry_bnd",         nz+1);
   int1d  maskprn_bnd         ("maskprn_bnd",         nz+1);
   //------------------------------------------------------------------------------------------------
-  // Liran: Threshold values needed are combined here
-  real upthresh = 1.0;
-  real downthresh = 1.0;
-  real upthresh2 = 0.5;
-  real downthresh2 = 0.5;
-  real cloudthresh = 1e-6;
-  real prcpthresh = 1e-6;  
-  // mhwang
-  // high thresholds are used to classify transport classes (following Xu et al., 2002, Q.J.R.M.S.
-  real cloudthresh_trans = 1e-5; //Cloud mixing ratio beyond which cell is "cloudy" to classify transport classes (kg/kg)   +++mhwang
-  // the maxium of cloudthres_trans and 0.01*qvs is used to classify transport class
-  real precthresh_trans  = 1e-4; //Preciptation mixing ratio beyond which cell is raining to classify transport classes (kg/kg)  !+++mwhang
-  /* Liran: module_data_ecpp1.F90 line 142
-  !! subarea-average vertical mass fluxes (kg/m2/s) smaller than
-   !! aw_draft_cut*rho are treated as zero
-   !! note that with a*w = 1e-4 m/s, dz over 1 day = 8.6 m which is small
-   */
-  real aw_draft_cut = 1.0e-4;   // m/s 
-  real w_draft_max = 50.0;   // m/s maximum expected updraft
-  // fractional areas below afrac_cut are ignored
-  real afrac_cut = aw_draft_cut/w_draft_max;
-  real afrac_cut_bb  = afrac_cut*0.5;
-  real afrac_cut_0p5 = afrac_cut*0.5;
-  real afrac_cut_0p2 = afrac_cut*0.2;
-  real afrac_cut_0p1 = afrac_cut*0.1;
-  //------------------------------------------------------------------------------------------------
-  int runcount     = 0;
-  int ijdel_upaa   = 0;
-  int ijdel_downaa = 0;
-  int ijdel_upbb   = 0;
-  int ijdel_downbb = 0;
-  //------------------------------------------------------------------------------------------------
-  parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
-    crm_cnt(iens) = crm_cnt(iens) + 1;
-  });
-  runcount = crm_cnt(0);
-  //------------------------------------------------------------------------------------------------
   parallel_for(SimpleBounds<5>(nclass_prc,ndraft_max,nclass_cld,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
      area_cen_final(iPR,iTR,iCL,k,icrm) = 0.0;
      area_cen      (iPR,iTR,iCL,k,icrm) = 0.0;
@@ -709,7 +724,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
       real EVS = esatw_crm(crm_temp(k,j,i,icrm)); //   ! saturation water vapor pressure (PA)
       qvs(k,j,i,icrm) = .622*EVS/(ref_pres(icrm,k)*100.-EVS); //  ! pres(icrm,kk) with unit of hPa
       alt(k,j,i,icrm) =  287.0*crm_temp(k,j,i,icrm)/(100.*ref_pres(icrm,k));
-      real rh_temp = host_state_qv(k,j,i,icrm)/qvs(k,j,i,icrm);
+      real tmp_qv = crm_rho_v(k,j,i,iens) / ( crm_rho_d(k,j,i,iens) + crm_rho_v(k,j,i,iens) );
+      real rh_temp = tmp_qv / qvs(k,j,i,icrm);
       altsum1   (k,j,i,icrm) = altsum1(k,j,i,icrm) + alt(k,j,i,icrm);
       qcloudsum1(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qcloud   (k,j,i,icrm);
       qrainsum1 (k,j,i,icrm) = qrainsum1 (k,j,i,icrm) + qrloud   (k,j,i,icrm);
@@ -736,16 +752,16 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   */
   //------------------------------------------------------------------------------------------------
   // Check if we have reached the end of the level 1 time averaging period   
-  if (runcount >=ntavg1 && runcount % ntavg1 == 0) {
+  if (nstep >=ntavg1 && nstep % ntavg1 == 0) {
     parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
       // itavg1 is divisible by ntavg1
-      qcloudsum1      (k,j,i,icrm) = qcloudsum1(k,j,i,icrm)/ntavg1;
-      qrainsum1       (k,j,i,icrm) = qrainsum1 (k,j,i,icrm)/ntavg1;
-      qicesum1        (k,j,i,icrm) = qicesum1  (k,j,i,icrm)/ntavg1;
-      qsnowsum1       (k,j,i,icrm) = qsnowsum1 (k,j,i,icrm)/ntavg1;
-      altsum1         (k,j,i,icrm) = altsum1   (k,j,i,icrm)/ntavg1;
-      ecppwwsum1      (k,j,i,icrm) = ecppwwsum1(k,j,i,icrm)/ntavg1;
-      rhsum1          (k,j,i,icrm) = rhsum1    (k,j,i,icrm)/ntavg1;
+      qcloudsum1      (k,j,i,icrm) = qcloudsum1(k,j,i,icrm) / ntavg1;
+      qrainsum1       (k,j,i,icrm) = qrainsum1 (k,j,i,icrm) / ntavg1;
+      qicesum1        (k,j,i,icrm) = qicesum1  (k,j,i,icrm) / ntavg1;
+      qsnowsum1       (k,j,i,icrm) = qsnowsum1 (k,j,i,icrm) / ntavg1;
+      altsum1         (k,j,i,icrm) = altsum1   (k,j,i,icrm) / ntavg1;
+      ecppwwsum1      (k,j,i,icrm) = ecppwwsum1(k,j,i,icrm) / ntavg1;
+      rhsum1          (k,j,i,icrm) = rhsum1    (k,j,i,icrm) / ntavg1;
     });
 
     parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k, int iens) {
@@ -784,8 +800,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
         */
         cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
         // BELOW: 0.01*qvs may be too large at low level.
-        // if( cloudmixr_total(i,j,k) >= max(0.01*qvs(i,j,k), cloudthresh_trans) ) then
-        if (cloudmixr_total(k_crm,j,i,icrm) >= cloudthresh_trans) {
+        // if( cloudmixr_total(i,j,k) >= max(0.01*qvs(i,j,k), threshold_trans_cld) ) then
+        if (cloudmixr_total(k_crm,j,i,icrm) >= threshold_trans_cld) {
           cloudtop(j,i,icrm) = k_crm; 
           break; // exit the loop
         }
@@ -799,16 +815,12 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 
     //printf("Liran check categorization_stats 2\n");
     //------------------------------------------------------------------------------------------------
-      //parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
-        //crm_cnt(iens) = crm_cnt(iens) + 1;
-      //});
-
     /*
       !------------------------------------------------------------------------
       subroutine determine_transport_thresh( &
         nx, ny, nz, &
-        mode_updnthresh, upthresh, downthresh, &
-        upthresh2, downthresh2, cloudthresh, &
+        mode_updnthresh, threshold_up1, threshold_dn1, &
+        threshold_up2, threshold_dn2, threshold_cld, &
         !     ctime, &
         ww, rhoair, &
         wdown_thresh_k, wup_thresh_k         &
@@ -833,7 +845,6 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
         ! (assume periodic BC here)
     */
     // if ((mode_updnthresh == 12) .or. (mode_updnthresh == 13)) then This is ignored
-    int ijdel = std::max({ijdel_upaa, ijdel_upbb, ijdel_downaa, ijdel_downbb});
 
     //printf("\nValue of mode_updnthresh: %d: ", mode_updnthresh);
     // Value of mode_updnthresh: 16
@@ -1032,8 +1043,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
          tmpw = std::max( tmpw, wup_rms(icrm) );
        }
         tmpw = std::max( tmpw, tmpw_minval );
-        wup_thresh_k(k_crm,0,icrm) = tmpw*std::abs(upthresh);
-        wup_thresh_k(k_crm,1,icrm) = tmpw*std::abs(upthresh2);
+        wup_thresh_k(k_crm,0,icrm) = tmpw*std::abs(threshold_up1);
+        wup_thresh_k(k_crm,1,icrm) = tmpw*std::abs(threshold_up2);
       }
     });
     //printf("Liran check categorization_stats 8\n");
@@ -1056,8 +1067,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
           tmpw = std::max( tmpw, wup_rms(icrm) );
         }
         tmpw = std::max( tmpw, tmpw_minval );
-        wdown_thresh_k(k_crm,0,icrm) = -tmpw*std::abs(downthresh);
-        wdown_thresh_k(k_crm,1,icrm) = -tmpw*std::abs(downthresh2);
+        wdown_thresh_k(k_crm,0,icrm) = -tmpw*std::abs(threshold_dn1);
+        wdown_thresh_k(k_crm,1,icrm) = -tmpw*std::abs(threshold_dn2);
       }
 
     });
@@ -1137,9 +1148,9 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
     //    nx, ny, nz, nupdraft, ndndraft, ndraft_max, &
     //    cloudmixr, cf3d, precall, ww, &
     //    wdown_thresh_k, wup_thresh_k, &
-    //    cloudthresh, prcpthresh, &
+    //    threshold_cld, threshold_prc, &
     //    mask_bnd, mask_cen,  &
-    //    cloudmixr_total, cloudthresh_trans, precthresh_trans, &
+    //    cloudmixr_total, threshold_trans_cld, threshold_trans_prc, &
     //    qvs, precmixr_total )
         //
         // Sets up the masks used for determining quiescent/up/down, clear/cloudy,
@@ -1179,8 +1190,6 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
           }
         });
 
-        real cloudthresh_trans_temp=0.0;
-        real precthresh_trans_temp=0.0;
         int itr;
         int ipr;
         int icl;
@@ -1189,17 +1198,17 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
           for (int j=0; j<ny; j++) {
           // Set initial mask values for the vertical cell boundaries...
             for (int k=0; k<(nz+1); k++) {
-              maskup(k,0) =  0;
-              maskdn(k,0) =  0;
-              maskqu(k) =  0;
-              maskcld(k) =  0;
-              maskclr(k) =  0;
-              maskcld_bnd(k) =  0;
-              maskclr_bnd(k) =  0;
-              maskpry(k) =  0;
-              maskprn(k) =  0;
-              maskpry_bnd(k) =  0;
-              maskprn_bnd(k) =  0;
+              maskup     (k,0) = 0;
+              maskdn     (k,0) = 0;
+              maskqu     (k)   = 0;
+              maskcld    (k)   = 0;
+              maskclr    (k)   = 0;
+              maskcld_bnd(k)   = 0;
+              maskclr_bnd(k)   = 0;
+              maskpry    (k)   = 0;
+              maskprn    (k)   = 0;
+              maskpry_bnd(k)   = 0;
+              maskprn_bnd(k)   = 0;
 
               // Transport upward at cell boundaries...
               // We have to take into account the possibility of multiple
@@ -1209,9 +1218,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
               // 
               //  updraft only exist in cloudy area or precipitating clear area ++++mhwang
   
-              cloudthresh_trans_temp = cloudthresh_trans;
-              if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz-1), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
-                 (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz-1),j,i,icrm)) * 0.5 > precthresh_trans ){
+              if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz-1), j, i, icrm)) * 0.5 > threshold_trans_cld ||
+                 (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz-1),j,i,icrm)) * 0.5 > threshold_trans_prc ){
                  // Liran Only one threshold
                 if (crm_wvel(k,j,i,icrm) > wup_thresh_k(k, 0,icrm)) {
                     maskup(k,0) = 1;
@@ -1222,8 +1230,8 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
               //Transport downward at cell boundaries...
               // downdraft only exist in cloudy area or precipitating clear area   +++mhwang
 
-              if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz-1), j, i, icrm)) * 0.5 > cloudthresh_trans_temp ||
-                  (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz-1),j,i,icrm)) * 0.5 > precthresh_trans ){
+              if ( (cloudmixr_total(std::max(k - 1, 0), j, i, icrm) + cloudmixr_total(std::min(k, nz-1), j, i, icrm)) * 0.5 > threshold_trans_cld ||
+                  (precmixr_total(std::max(k - 1, 0),j,i,icrm)  + precmixr_total(std::min(k, nz-1),j,i,icrm)) * 0.5 > threshold_trans_prc ){
                  // !Only one threshold
                 if (crm_wvel(k,j,i,icrm) < wdown_thresh_k(k, 0,icrm)) {
                     maskdn(k,0) = 1;
@@ -1238,14 +1246,14 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
               } 
 
               // Cloudy or clear at cell boundaries...
-              if ((cloudmixr(std::max(k - 1, 0), j, i, icrm)+cloudmixr(std::min(k, nz-1), j, i, icrm))*0.5>cloudthresh){
+              if ((cloudmixr(std::max(k - 1, 0), j, i, icrm)+cloudmixr(std::min(k, nz-1), j, i, icrm))*0.5>threshold_cld){
                 maskcld_bnd(k) = 1;
               } else {
                 maskclr_bnd(k) = 1;
               }
 
               // Raining or not at cell boundaries...
-              if ((precmixr_total(std::max(k - 1, 0), j, i, icrm)+precmixr_total(std::min(k, nz-1), j, i, icrm))*0.5>prcpthresh){
+              if ((precmixr_total(std::max(k - 1, 0), j, i, icrm)+precmixr_total(std::min(k, nz-1), j, i, icrm))*0.5>threshold_prc){
                 maskpry_bnd(k) = 1;
               } else {
                 maskprn_bnd(k) = 1;
@@ -1254,13 +1262,13 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 
             for (int k=0; k<=nz; k++) {
               // Cloudy or clear at cell centers...
-              if (cloudmixr_total(k,j,i,icrm)>cloudthresh){
+              if (cloudmixr_total(k,j,i,icrm)>threshold_cld){
                 maskcld(k) = 1;
               } else {
                 maskclr(k) = 1;
               }
               // Raining or not at cell centers...
-              if (precmixr_total(k,j,i,icrm)>prcpthresh){
+              if (precmixr_total(k,j,i,icrm)>threshold_prc){
                 maskpry(k) = 1;
               } else {
                 maskprn(k) = 1;
@@ -1554,7 +1562,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
             }
 
             if (iter>5){
-              printf("\nLiran iter greater than 5\n");
+              printf("\nECPP - (iter) iterations greater than 5\n");
             }
           }
         } // end of for (int k=0; k<=nz; k++)
@@ -1595,9 +1603,9 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
                   // This list is not complete! 
                   // ! calculate the mean vertical velocity over the quiescent class  +++mhwang
                   if(iTR==QUI){
-                    wwqui_bar_cen(k,icrm) = wwqui_bar_cen(k,icrm)+(crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5*mask_tmp;
+                    wwqui_bar_cen(k,icrm) = wwqui_bar_cen(k,icrm) + ( crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm) )*0.5*mask_tmp;
                     if(iCL==CLD){
-                      wwqui_cld_bar_cen(k,icrm)=wwqui_cld_bar_cen(k,icrm)+(crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5*mask_tmp;
+                      wwqui_cld_bar_cen(k,icrm) = wwqui_cld_bar_cen(k,icrm)+(crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5*mask_tmp;
                     } // if(icl==CLD)
                   } // if(itr==QUI)
                 } // end of for (int k=0
@@ -1638,8 +1646,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
       } // end of for (int j=0
 
 
-      // calcualte vertical velocity variance for quiescent class (total and cloudy)  +++mhwang
-
+      // calculate vertical velocity variance for quiescent class (total and cloudy)  +++mhwang
 
       real abnd_up;
       real abnd_down;
@@ -1700,10 +1707,10 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
                 // wwqui_bar_cen is used in for both all sky and cloudy sky.
                 // when wwqui_cld_bar_cen was used for cloudy sky, wwqui_cld_cen will be smaller than wwqui_all_cen.
                 tempwork = ((crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5-wwqui_bar_cen(k,icrm));
-                wwqui_all_cen(k,icrm) = wwqui_all_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
+                wwqui_all_cen(k,icrm) = wwqui_all_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * shoc_tke(k,j,i,icrm)/3.0;
                 if(iCL==CLD){
                   tempwork = ((crm_wvel(k,j,i,icrm)+crm_wvel(k+1,j,i,icrm))*0.5-wwqui_bar_cen(k,icrm));
-                  wwqui_cld_cen(k,icrm)=wwqui_cld_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * host_state_shoc_tke(k,j,i,icrm)/3.0;
+                  wwqui_cld_cen(k,icrm)=wwqui_cld_cen(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * shoc_tke(k,j,i,icrm)/3.0;
                 } // if(icl==CLD)
               } // end of for (int k=0
 
@@ -1718,10 +1725,10 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
                 // wwqui_bar_bnd is used in both all sky and cloudy sky.
                 // when wwqui_cld_bar_bnd was used for cloudy sky, wwqui_cld_bnd will be smaller than wwqui_all_bnd.
                 tempwork = (crm_wvel(k,j,i,icrm)-wwqui_bar_cen(k,icrm));
-                wwqui_all_bnd(k,icrm) = wwqui_all_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm)) * 0.5/3.0;
+                wwqui_all_bnd(k,icrm) = wwqui_all_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (shoc_tke(km0,j,i,icrm)+shoc_tke(km1,j,i,icrm)) * 0.5/3.0;
                 if(iCL==CLD){
                   tempwork = (crm_wvel(k,j,i,icrm)-wwqui_bar_cen(k,icrm));
-                  wwqui_cld_bnd(k,icrm)=wwqui_cld_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (host_state_shoc_tke(km0,j,i,icrm)+host_state_shoc_tke(km1,j,i,icrm))* 0.5/3.0;
+                  wwqui_cld_bnd(k,icrm)=wwqui_cld_bnd(k,icrm)+mask_tmp * tempwork*tempwork + mask_tmp * (shoc_tke(km0,j,i,icrm)+shoc_tke(km1,j,i,icrm))* 0.5/3.0;
                 } // if(icl==CLD)
               } // for (int k = 1; k < nz+1; ++k)  
             } // end of for (int iPR=0
@@ -1752,22 +1759,22 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
     // if it is not the last block of time in ntavg2
     parallel_for( SimpleBounds<1>(nens) , YAKL_LAMBDA (int icrm) {
       for (int k=0; k<nz; k++) {
-        ecpp_sum_wwqui_bar_cen(k,icrm)        = ecpp_sum_wwqui_bar_cen(k,icrm)        + wwqui_bar_cen(k,icrm);
+        ecpp_sum_wwqui_bar_cen    (k,icrm) = ecpp_sum_wwqui_bar_cen    (k,icrm) + wwqui_bar_cen    (k,icrm);
         ecpp_sum_wwqui_cld_bar_cen(k,icrm) = ecpp_sum_wwqui_cld_bar_cen(k,icrm) + wwqui_cld_bar_cen(k,icrm);
-        ecpp_sum_wwqui_bar_bnd(k,icrm)        = ecpp_sum_wwqui_bar_bnd(k,icrm)        + wwqui_bar_bnd(k,icrm);
+        ecpp_sum_wwqui_bar_bnd    (k,icrm) = ecpp_sum_wwqui_bar_bnd    (k,icrm) + wwqui_bar_bnd    (k,icrm);
         ecpp_sum_wwqui_cld_bar_bnd(k,icrm) = ecpp_sum_wwqui_cld_bar_bnd(k,icrm) + wwqui_cld_bar_bnd(k,icrm);
-        ecpp_sum_tbeg(k,icrm)                 =  ecpp_sum_tbeg(k,icrm)                + acldy_cen_tbeg(k,icrm);
+        ecpp_sum_tbeg             (k,icrm) = ecpp_sum_tbeg             (k,icrm) + acldy_cen_tbeg   (k,icrm);
       }
       for (int iCL=0; iCL<nclass_cld; iCL++) {
         for (int iTR=0; iTR<ndraft_max; iTR++) {
           for (int iPR=0; iPR<nclass_prc; iPR++) {
             for (int k=0; k<nz; k++) {
-              ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_area_cen(iPR,iTR,iCL,k,icrm)       + area_cen(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm)  =  ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) + area_cen_final(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)          =  ecpp_sum_rh_cen(iPR,iTR,iCL,k,icrm)         + rh_cen(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)      =  ecpp_sum_qcloud_cen(iPR,iTR,iCL,k,icrm)     + qcloud_cen(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_qice_cen(iPR,iTR,iCL,k,icrm)       + qice_cen(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)    =  ecpp_sum_precsolidcen(iPR,iTR,iCL,k,icrm)   + qrain_cen(iPR,iTR,iCL,k,icrm);
+              ecpp_sum_area_cen      (iPR,iTR,iCL,k,icrm) =  ecpp_sum_area_cen      (iPR,iTR,iCL,k,icrm) + area_cen      (iPR,iTR,iCL,k,icrm);
+              ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) =  ecpp_sum_area_cen_final(iPR,iTR,iCL,k,icrm) + area_cen_final(iPR,iTR,iCL,k,icrm);
+              ecpp_sum_rh_cen        (iPR,iTR,iCL,k,icrm) =  ecpp_sum_rh_cen        (iPR,iTR,iCL,k,icrm) + rh_cen        (iPR,iTR,iCL,k,icrm);
+              ecpp_sum_qcloud_cen    (iPR,iTR,iCL,k,icrm) =  ecpp_sum_qcloud_cen    (iPR,iTR,iCL,k,icrm) + qcloud_cen    (iPR,iTR,iCL,k,icrm);
+              ecpp_sum_qice_cen      (iPR,iTR,iCL,k,icrm) =  ecpp_sum_qice_cen      (iPR,iTR,iCL,k,icrm) + qice_cen      (iPR,iTR,iCL,k,icrm);
+              ecpp_sum_precsolidcen  (iPR,iTR,iCL,k,icrm) =  ecpp_sum_precsolidcen  (iPR,iTR,iCL,k,icrm) + qrain_cen     (iPR,iTR,iCL,k,icrm);
             }
           }
         }
@@ -1777,9 +1784,9 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
         for (int iTR=0; iTR<ndraft_max; iTR++) {
           for (int iPR=0; iPR<nclass_prc; iPR++) {
             for (int k=0; k<(nz+1); k++) {
-              ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_area_bnd(iPR,iTR,iCL,k,icrm)       + area_bnd(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm)  =  ecpp_sum_area_bnd_final(iPR,iTR,iCL,k,icrm) + area_bnd_final(iPR,iTR,iCL,k,icrm);
-              ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)        =  ecpp_sum_mass_bnd(iPR,iTR,iCL,k,icrm)       + mass_bnd(iPR,iTR,iCL,k,icrm);
+              ecpp_sum_area_bnd        (iPR,iTR,iCL,k,icrm) =  ecpp_sum_area_bnd       (iPR,iTR,iCL,k,icrm) + area_bnd      (iPR,iTR,iCL,k,icrm);
+              ecpp_sum_area_bnd_final  (iPR,iTR,iCL,k,icrm) =  ecpp_sum_area_bnd_final (iPR,iTR,iCL,k,icrm) + area_bnd_final(iPR,iTR,iCL,k,icrm);
+              ecpp_sum_mass_bnd        (iPR,iTR,iCL,k,icrm) =  ecpp_sum_mass_bnd       (iPR,iTR,iCL,k,icrm) + mass_bnd      (iPR,iTR,iCL,k,icrm);
             }
           }
         }
@@ -1790,16 +1797,16 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
 
     // Done with time level one averages so zero them out for next period.
     parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
-      qcloudsum1(iz,iy,ix,iens)    = 0;
-      qrainsum1(iz,iy,ix,iens)     = 0;
-      qicesum1(iz,iy,ix,iens)      = 0;
-      qsnowsum1(iz,iy,ix,iens)     = 0;
-      altsum1(iz,iy,ix,iens)       = 0;
-      ecppwwsum1(iz,iy,ix,iens)    = 0;
-      rhsum1(iz,iy,ix,iens)        = 0;
+      qcloudsum1    (iz,iy,ix,iens) = 0;
+      qrainsum1     (iz,iy,ix,iens) = 0;
+      qicesum1      (iz,iy,ix,iens) = 0;
+      qsnowsum1     (iz,iy,ix,iens) = 0;
+      altsum1       (iz,iy,ix,iens) = 0;
+      ecppwwsum1    (iz,iy,ix,iens) = 0;
+      rhsum1        (iz,iy,ix,iens) = 0;
     });
 
-  } // if (runcount >=ntavg1 && runcount % ntavg1 == 0)  
+  } // if (nstep >=ntavg1 && nstep % ntavg1 == 0)  
 
   //------------------------------------------------------------------------------------------------
   // end of level 1 averaging
@@ -1808,7 +1815,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
   // Liran: Again, we haven't distinguish level 2 averaging from level 1? 
 
   // ! Check if we have reached the end of a level 2 averaging period.
-  if (runcount >=ntavg2 && runcount % ntavg2 == 0){
+  if (nstep >=ntavg2 && nstep % ntavg2 == 0){
     // Turn the running sums into averages. ncnt1 in this case is the number
     // of calls to categorization_stats during the level 2 averaging period,
     // which increment the bnd/cen arrays.
@@ -1875,7 +1882,7 @@ inline void ecpp_crm_stat( pam::PamCoupler &coupler , int nstep) {
     //   printf("\nnecpp_cat_area_bnd: %d %d %d %d %d %.2f  : ", iPR,iTR,iCL,k,icrm,ecpp_cat_area_bnd(iPR,iTR,iCL,k,icrm));
     //});
 
-  } // end of if (runcount >=ntavg2 && runcount % ntavg2 == 0)
+  } // end of if (nstep >=ntavg2 && nstep % ntavg2 == 0)
 
 }
 

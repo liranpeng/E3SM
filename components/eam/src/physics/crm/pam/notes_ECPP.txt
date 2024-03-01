@@ -35,3 +35,9 @@ if( mod(itavg2,ntavg2) == 0 ) then
   call rsums2ToAvg(...)
 
 ! End of level two time averaging period
+----------------------------------------------------------------------------------------------------
+
+altsum1 => this is "alpha" or 1/density and it's often used by interpolating to layer interfaces to 
+multiply vertical velocity
+
+----------------------------------------------------------------------------------------------------

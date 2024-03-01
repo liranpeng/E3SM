@@ -1,8 +1,9 @@
 #pragma once
 
 #include "pam_coupler.h"
-#include "Dycore.h"
 #include "sat.h"
+#include "pam_ecpp_vars.h"
+#include "pam_ecpp_sampling.h"
 
 // initialize variables for ECPP
 inline void pam_ecpp_init( pam::PamCoupler &coupler ) {
@@ -20,9 +21,11 @@ inline void pam_ecpp_init( pam::PamCoupler &coupler ) {
   // set parameters that control level 1 & 2 averaging intervals
   pam_ecpp_set_sampling_parameters(coupler)
   // register and allocate ECPP variables in the PAM data manager
-  pam_ecpp_register(coupler)
+  pam_ecpp_vars_register(coupler)
   // initialize values of allocated ECPP variables
-  pam_ecpp_init_values(coupler)
+  pam_ecpp_vars_init(coupler)
+  // initialize running sums
+  pam_ecpp_L1_zero_sums(coupler)
   //------------------------------------------------------------------------------------------------
 }
 
@@ -111,435 +114,7 @@ inline void pam_ecpp_set_sampling_parameters( pam::PamCoupler &coupler ) {
 }
 
 
-inline void pam_ecpp_register( pam::PamCoupler &coupler ) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device = coupler.get_data_manager_device_readwrite();
-  auto &dm_host   = coupler.get_data_manager_host_readwrite();
-  auto nens       = coupler.get_option<int>("ncrms");
-  auto nz         = coupler.get_option<int>("crm_nz");
-  auto nx         = coupler.get_option<int>("crm_nx");
-  auto ny         = coupler.get_option<int>("crm_ny");
-  //------------------------------------------------------------------------------------------------
-  nclass_trx    = coupler.get_option<int>("ecpp_nclass_trx");
-  nclass_cld    = coupler.get_option<int>("ecpp_nclass_cld");
-  nclass_prc    = coupler.get_option<int>("ecpp_nclass_prc");
-  //------------------------------------------------------------------------------------------------
-  dm_device.register_and_allocate<int> ("ecpp_L2_cnt",   "# of level 2 avg count",     {nens}, {"nens"});
-  dm_device.register_and_allocate<int> ("ndown",         "# of down count",            {nens}, {"nens"});
-  dm_device.register_and_allocate<int> ("nup",           "# of nup count",             {nens}, {"nens"});
-  dm_device.register_and_allocate<int> ("kup_top",       "maximum kup",                {nens}, {"nens"});
-  dm_device.register_and_allocate<int> ("kdown_top",     "maximum kdown",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wdown_bar",     "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wup_bar",       "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wdown_stddev",  "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wup_stddev",    "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wup_rms",       "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("wdown_rms",     "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("updraftbase",   "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("updrafttop",    "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("dndrafttop",    "<description>",              {nens}, {"nens"});
-  dm_device.register_and_allocate<real>("dndraftbase",   "<description>",              {nens}, {"nens"});
-  //------------------------------------------------------------------------------------------------
-  // 4D ECPP quantities
-  dm_device.register_and_allocate<real>("qlsink_bf" ,    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("prain"     ,    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qcloud_bf" ,    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qcloudsum1",    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qcloud_bfsum1", "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qrainsum1",     "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qicesum1",      "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qsnowsum1",     "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qgraupsum1",    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qlsinksum1",    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("precrsum1",     "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("precsolidsum1", "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("precallsum1",   "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("ecpp_L1_sum_rho",       "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("rhsum1",        "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("cf3dsum1",      "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("tkesgssum1",    "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qlsink_bfsum1", "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("qvssum1",       "<description>", {nz,  ny,nx,nens}, {"z",  "y","x","nens"});
-  dm_device.register_and_allocate<real>("ecppwwsum1",    "<description>", {nz+1,ny,nx,nens}, {"zp1","y","x","nens"});
-  dm_device.register_and_allocate<real>("ecppwwsqsum1",  "<description>", {nz+1,ny,nx,nens}, {"zp1","y","x","nens"});
-  //------------------------------------------------------------------------------------------------
-  // 2D ECPP quantities
-  dm_device.register_and_allocate<real>("xkhvsum",          "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("cldtot2d",         "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wwqui_all_cen",    "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wwqui_all_bnd",    "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("wwqui_cld_cen",    "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wwqui_cld_bnd",    "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<int> ("nup_k",            "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wup_bar_k",        "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<int> ("ndown_k",          "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wdown_bar_k",      "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wdown_stddev_k",   "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wup_stddev_k",     "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wup_rms_k",        "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wdown_rms_k",      "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("wup_rms_ksmo",     "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("wdown_rms_ksmo",   "<description>", {nz+1,nens}, {"zp1","nens"});
-  //------------------------------------------------------------------------------------------------
-  // variables categorized by the various transport and cloud categories
-  dm_device.register_and_allocate<real>("ecpp_cat_wwqui_bar_cen",     "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_wwqui_cld_bar_cen", "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_tbeg",              "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_wwqui_bar_bnd",     "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_wwqui_cld_bar_bnd", "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_cen_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_rh_cen",            "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_qcloud_cen",        "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_qice_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_precsolidcen",      "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_area_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_cat_mass_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  //------------------------------------------------------------------------------------------------
-  // aggregated variables used for categorization
-  dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_cen",     "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cld_bar_cen", "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_tbeg",              "<description>", {nz,  nens}, {"z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_wwqui_bar_bnd",     "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_wwqui_cld_bar_bnd", "<description>", {nz+1,nens}, {"zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_cen_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_rh_cen",            "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_qcloud_cen",        "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_qice_cen",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_precsolidcen",      "<description>", {nclass_prc,nclass_trx,nclass_cld,nz,  nens}, {"nclass_prc","nclass_trx","nclass_cld","z",  "nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd_final",    "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_area_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  dm_device.register_and_allocate<real>("ecpp_sum_mass_bnd",          "<description>", {nclass_prc,nclass_trx,nclass_cld,nz+1,nens}, {"nclass_prc","nclass_trx","nclass_cld","zp1","nens"});
-  //------------------------------------------------------------------------------------------------
-}
-
-// initialize values after they are registered and allocated
-inline void pam_ecpp_init_values( pam::PamCoupler &coupler ) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device = coupler.get_data_manager_device_readwrite();
-  auto &dm_host   = coupler.get_data_manager_host_readwrite();
-  auto nens       = coupler.get_option<int>("ncrms");
-  auto nz         = coupler.get_option<int>("crm_nz");
-  auto nx         = coupler.get_option<int>("crm_nx");
-  auto ny         = coupler.get_option<int>("crm_ny");
-  //------------------------------------------------------------------------------------------------
-  nclass_trx    = coupler.get_option<int>("ecpp_nclass_trx");
-  nclass_cld    = coupler.get_option<int>("ecpp_nclass_cld");
-  nclass_prc    = coupler.get_option<int>("ecpp_nclass_prc");
-  //------------------------------------------------------------------------------------------------
-  // initialize 1D quantities
-  auto ecpp_L2_cnt     = dm_device.get<int, 1>("ecpp_L2_cnt");
-  auto kup_top         = dm_device.get<int, 1>("kup_top");
-  auto kdown_top       = dm_device.get<int, 1>("kdown_top");
-  auto ndown           = dm_device.get<int, 1>("ndown");
-  auto nup             = dm_device.get<int, 1>("nup");
-  auto wdown_bar       = dm_device.get<real,1>("wdown_bar");
-  auto wdown_stddev    = dm_device.get<real,1>("wdown_stddev");
-  auto wup_stddev      = dm_device.get<real,1>("wup_stddev");
-  auto wup_rms         = dm_device.get<real,1>("wup_rms");
-  auto wdown_rms       = dm_device.get<real,1>("wdown_rms");
-  auto wup_bar         = dm_device.get<real,1>("wup_bar");
-  auto updraftbase     = dm_device.get<real,1>("updraftbase");
-  auto updrafttop      = dm_device.get<real,1>("updrafttop");
-  auto dndrafttop      = dm_device.get<real,1>("dndrafttop");
-  auto dndraftbase     = dm_device.get<real,1>("dndraftbase");
-  parallel_for(SimpleBounds<1>(nens), YAKL_LAMBDA (int iens) {
-    ecpp_L2_cnt   (icrm) = 0;
-    kup_top       (icrm) = 0;
-    kdown_top     (icrm) = 0;
-    ndown         (icrm) = 0;
-    nup           (icrm) = 0;
-    updraftbase   (icrm) = 0;
-    updrafttop    (icrm) = nz - 1;
-    dndrafttop    (icrm) = nz - 1;
-    dndraftbase   (icrm) = 0;
-    wup_bar       (icrm) = 0.0;
-    wdown_bar     (icrm) = 0.0;
-    wup_stddev    (icrm) = 0.0;
-    wdown_stddev  (icrm) = 0.0;
-    wup_rms       (icrm) = 0.0;
-    wdown_rms     (icrm) = 0.0;
-  });
-  //------------------------------------------------------------------------------------------------
-  // initialize 2D quantities
-  auto xkhvsum                    = dm_device.get<real,2>("xkhvsum");
-  auto nup_k                      = dm_device.get<int, 2>("nup_k");
-  auto ndown_k                    = dm_device.get<int, 2>("ndown_k");
-  auto wup_bar_k                  = dm_device.get<real,2>("wup_bar_k");
-  auto wdown_bar_k                = dm_device.get<real,2>("wdown_bar_k");
-  auto wup_stddev_k               = dm_device.get<real,2>("wup_stddev_k");
-  auto wdown_stddev_k             = dm_device.get<real,2>("wdown_stddev_k");
-  auto wup_rms_k                  = dm_device.get<real,2>("wup_rms_k");
-  auto wdown_rms_k                = dm_device.get<real,2>("wdown_rms_k");
-  auto wup_rms_ksmo               = dm_device.get<real,2>("wup_rms_ksmo");
-  auto wdown_rms_ksmo             = dm_device.get<real,2>("wdown_rms_ksmo");
-  auto wwqui_all_cen              = dm_device.get<real,2>("wwqui_all_cen");
-  auto wwqui_all_bnd              = dm_device.get<real,2>("wwqui_all_bnd");
-  auto wwqui_cld_cen              = dm_device.get<real,2>("wwqui_cld_cen");
-  auto wwqui_cld_bnd              = dm_device.get<real,2>("wwqui_cld_bnd");
-  auto cldtot2d                   = dm_device.get<real,2>("cldtot2d");
-  auto ecpp_sum_wwqui_bar_cen     = dm_device.get<real,2>("ecpp_sum_wwqui_bar_cen");
-  auto ecpp_sum_wwqui_cld_bar_cen = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_cen");
-  auto ecpp_sum_wwqui_bar_bnd     = dm_device.get<real,2>("ecpp_sum_wwqui_bar_bnd");
-  auto ecpp_sum_wwqui_cld_bar_bnd = dm_device.get<real,2>("ecpp_sum_wwqui_cld_bar_bnd");
-  auto ecpp_sum_tbeg              = dm_device.get<real,2>("ecpp_sum_tbeg");
-  auto ecpp_cat_wwqui_bar_cen     = dm_device.get<real,2>("ecpp_cat_wwqui_bar_cen");
-  auto ecpp_cat_wwqui_bar_bnd     = dm_device.get<real,2>("ecpp_cat_wwqui_bar_bnd");
-  auto ecpp_cat_wwqui_cld_bar_cen = dm_device.get<real,2>("ecpp_cat_wwqui_cld_bar_cen");
-  auto ecpp_cat_wwqui_cld_bar_bnd = dm_device.get<real,2>("ecpp_cat_wwqui_cld_bar_bnd");
-  auto ecpp_cat_tbeg              = dm_device.get<real,2>("ecpp_cat_tbeg");
-  parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int iz, int iens) {
-    xkhvsum                        (iz,iens) = 0;
-    nup_k                          (iz,iens) = 0;
-    wup_bar_k                      (iz,iens) = 0;
-    ndown_k                        (iz,iens) = 0;
-    wdown_bar_k                    (iz,iens) = 0;
-    wdown_stddev_k                 (iz,iens) = 0;
-    wup_stddev_k                   (iz,iens) = 0;
-    wup_rms_k                      (iz,iens) = 0;
-    wdown_rms_k                    (iz,iens) = 0;
-    wwqui_all_cen                  (iz,iens) = 0;
-    wwqui_cld_cen                  (iz,iens) = 0;
-    cldtot2d                       (iz,iens) = 0;
-    ecpp_cat_wwqui_bar_cen         (iz,iens) = 0;
-    ecpp_cat_wwqui_cld_bar_cen     (iz,iens) = 0;
-    ecpp_cat_tbeg                  (iz,iens) = 0;
-    ecpp_sum_wwqui_bar_cen         (iz,iens) = 0;
-    ecpp_sum_wwqui_cld_bar_cen     (iz,iens) = 0;
-    ecpp_sum_tbeg                  (iz,iens) = 0;
-  });
-  parallel_for(SimpleBounds<2>(nz+1,nens), YAKL_LAMBDA (int iz, int iens) {
-    wwqui_all_bnd                  (iz,iens)= 0; 
-    wwqui_cld_bnd                  (iz,iens)= 0;
-    wup_rms_ksmo                   (iz,iens)= 0;
-    wdown_rms_ksmo                 (iz,iens)= 0;
-    ecpp_cat_wwqui_bar_bnd         (iz,iens)= 0;
-    ecpp_cat_wwqui_cld_bar_bnd     (iz,iens)= 0;
-    ecpp_sum_wwqui_bar_bnd         (iz,iens)= 0;
-    ecpp_sum_wwqui_cld_bar_bnd     (iz,iens)= 0;
-  });
-  //------------------------------------------------------------------------------------------------
-  // initialize 4D quantities
-  auto qlsink_bf            = dm_device.get<real,4>("qlsink_bf");
-  auto prain                = dm_device.get<real,4>("prain");
-  auto qcloud_bf            = dm_device.get<real,4>("qcloud_bf");
-  auto qcloudsum1           = dm_device.get<real,4>("qcloudsum1");
-  auto qcloud_bfsum1        = dm_device.get<real,4>("qcloud_bfsum1");
-  auto qrainsum1            = dm_device.get<real,4>("qrainsum1");
-  auto qicesum1             = dm_device.get<real,4>("qicesum1");
-  auto qsnowsum1            = dm_device.get<real,4>("qsnowsum1");
-  auto qgraupsum1           = dm_device.get<real,4>("qgraupsum1");
-  auto qlsinksum1           = dm_device.get<real,4>("qlsinksum1");
-  auto precrsum1            = dm_device.get<real,4>("precrsum1");
-  auto precsolidsum1        = dm_device.get<real,4>("precsolidsum1");
-  auto precallsum1          = dm_device.get<real,4>("precallsum1");
-  auto L1_sum_rho              = dm_device.get<real,4>("ecpp_L1_sum_rho");
-  auto rhsum1               = dm_device.get<real,4>("rhsum1");
-  auto cf3dsum1             = dm_device.get<real,4>("cf3dsum1");
-  auto ecppwwsum1           = dm_device.get<real,4>("ecppwwsum1");
-  auto ecppwwsqsum1         = dm_device.get<real,4>("ecppwwsqsum1");
-  auto tkesgssum1           = dm_device.get<real,4>("tkesgssum1");
-  auto qlsink_bfsum1        = dm_device.get<real,4>("qlsink_bfsum1");
-  auto qvssum1              = dm_device.get<real,4>("qvssum1");
-  parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
-    qlsink_bf     (iz,iy,ix,iens) = 0;
-    prain         (iz,iy,ix,iens) = 0;
-    qcloud_bf     (iz,iy,ix,iens) = 0;
-    qcloudsum1    (iz,iy,ix,iens) = 0;
-    qcloud_bfsum1 (iz,iy,ix,iens) = 0;
-    qrainsum1     (iz,iy,ix,iens) = 0;
-    qicesum1      (iz,iy,ix,iens) = 0;
-    qsnowsum1     (iz,iy,ix,iens) = 0;
-    qgraupsum1    (iz,iy,ix,iens) = 0;
-    qlsinksum1    (iz,iy,ix,iens) = 0;
-    precrsum1     (iz,iy,ix,iens) = 0;
-    precsolidsum1 (iz,iy,ix,iens) = 0;
-    precallsum1   (iz,iy,ix,iens) = 0;
-    L1_sum_rho       (iz,iy,ix,iens) = 0;
-    rhsum1        (iz,iy,ix,iens) = 0;
-    cf3dsum1      (iz,iy,ix,iens) = 0;
-    ecppwwsum1    (iz,iy,ix,iens) = 0;
-    ecppwwsqsum1  (iz,iy,ix,iens) = 0;
-    tkesgssum1    (iz,iy,ix,iens) = 0;
-    qlsink_bfsum1 (iz,iy,ix,iens) = 0;
-    qvssum1       (iz,iy,ix,iens) = 0;
-  });
-  //------------------------------------------------------------------------------------------------
-  // initialize 5D quantities
-  auto ecpp_sum_area_cen_final   = dm_device.get<real,5>("ecpp_sum_area_cen_final");
-  auto ecpp_sum_area_cen         = dm_device.get<real,5>("ecpp_sum_area_cen");
-  auto ecpp_sum_area_bnd_final   = dm_device.get<real,5>("ecpp_sum_area_bnd_final");
-  auto ecpp_sum_area_bnd         = dm_device.get<real,5>("ecpp_sum_area_bnd");
-  auto ecpp_sum_mass_bnd         = dm_device.get<real,5>("ecpp_sum_mass_bnd");
-  auto ecpp_sum_rh_cen           = dm_device.get<real,5>("ecpp_sum_rh_cen");
-  auto ecpp_sum_qcloud_cen       = dm_device.get<real,5>("ecpp_sum_qcloud_cen");
-  auto ecpp_sum_qice_cen         = dm_device.get<real,5>("ecpp_sum_qice_cen");
-  auto ecpp_sum_precsolidcen     = dm_device.get<real,5>("ecpp_sum_precsolidcen");
-  auto ecpp_cat_area_cen_final   = dm_device.get<real,5>("ecpp_cat_area_cen_final");
-  auto ecpp_cat_area_cen         = dm_device.get<real,5>("ecpp_cat_area_cen");
-  auto ecpp_cat_area_bnd_final   = dm_device.get<real,5>("ecpp_cat_area_bnd_final");
-  auto ecpp_cat_area_bnd         = dm_device.get<real,5>("ecpp_cat_area_bnd");
-  auto ecpp_cat_mass_bnd         = dm_device.get<real,5>("ecpp_cat_mass_bnd");
-  auto ecpp_cat_rh_cen           = dm_device.get<real,5>("ecpp_cat_rh_cen");
-  auto ecpp_cat_qcloud_cen       = dm_device.get<real,5>("ecpp_cat_qcloud_cen");
-  auto ecpp_cat_qice_cen         = dm_device.get<real,5>("ecpp_cat_qice_cen");
-  auto ecpp_cat_precsolidcen     = dm_device.get<real,5>("ecpp_cat_precsolidcen");
-  parallel_for(SimpleBounds<5>(nclass_prc,nclass_trx,nclass_cld,nz,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
-    ecpp_cat_area_cen_final   (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_area_cen         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_rh_cen           (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_qcloud_cen       (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_qice_cen         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_precsolidcen     (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_cen_final   (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_cen         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_rh_cen           (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_qcloud_cen       (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_qice_cen         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_precsolidcen     (iPR,iTR,iCL,k,icrm) = 0;
-  });
-  parallel_for(SimpleBounds<5>(nclass_prc,nclass_trx,nclass_cld,nz+1,nens), YAKL_LAMBDA (int iPR,int iTR,int iCL,int k,int icrm) {
-    ecpp_cat_area_bnd_final   (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_area_bnd         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_cat_mass_bnd         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_bnd_final   (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_area_bnd         (iPR,iTR,iCL,k,icrm) = 0;
-    ecpp_sum_mass_bnd         (iPR,iTR,iCL,k,icrm) = 0;
-  });
-  //------------------------------------------------------------------------------------------------
-}
-
-
-inline void pam_ecpp_update_L1_sums( pam::PamCoupler &coupler) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device      = coupler.get_data_manager_device_readwrite();
-  auto &dm_host        = coupler.get_data_manager_host_readwrite();
-  auto nens            = coupler.get_option<int>("ncrms");
-  auto nx              = coupler.get_option<int>("crm_nx");
-  auto ny              = coupler.get_option<int>("crm_ny");
-  auto nz              = coupler.get_option<int>("crm_nz");
-  auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  //------------------------------------------------------------------------------------------------
-  auto ref_pres        = dm_device.get<real const,2>("ref_pres"   );
-  auto temp            = dm_device.get<real const,4>("temp"       );
-  auto rho_d           = dm_device.get<real const,4>("density_dry");
-  auto rho_v           = dm_device.get<real const,4>("water_vapor");
-  auto rho_l           = dm_device.get<real const,4>("cloud_water");
-  auto rho_i           = dm_device.get<real const,4>("ice"        );
-  auto rho_r           = dm_device.get<real const,4>("rain"       );
-  auto wvel            = dm_device.get<real const,4>("wvel"       );
-  auto cldfrac         = dm_device.get<real const,4>("cldfrac"    );
-  //------------------------------------------------------------------------------------------------
-  // auto altsum1                        = dm_device.get<real,4>("altsum1");
-  // auto qcloudsum1                     = dm_device.get<real,4>("qcloudsum1");
-  // auto qrainsum1                      = dm_device.get<real,4>("qrainsum1");
-  // auto qicesum1                       = dm_device.get<real,4>("qicesum1");
-  // auto qsnowsum1                      = dm_device.get<real,4>("qsnowsum1");
-  // auto ecppwwsum1                     = dm_device.get<real,4>("ecppwwsum1");
-  // auto rhsum1                         = dm_device.get<real,4>("rhsum1");
-  // real2d acldy_cen_tbeg      ("acldy_cen_tbeg",      nz,  nens);
-  //------------------------------------------------------------------------------------------------
-  auto L1_sum_rho           = dm_device.get<real,4>("ecpp_L1_sum_rho");
-  auto L1_sum_cld           = dm_device.get<real,2>("ecpp_L1_sum_cld");
-  // auto L1_sum_acldy_cen_tbeg       = dm_device.get<real,2>("ecpp_L1_sum_acldy_cen_tbeg");
-  auto L1_sum_qc            = dm_device.get<real,4>("ecpp_L1_sum_qc");
-  auto L1_sum_qr            = dm_device.get<real,4>("ecpp_L1_sum_qr");
-  auto L1_sum_qi            = dm_device.get<real,4>("ecpp_L1_sum_qi");
-  auto L1_sum_qs            = dm_device.get<real,4>("ecpp_L1_sum_qs");
-  auto L1_sum_ww            = dm_device.get<real,4>("ecpp_L1_sum_ww");
-  auto L1_sum_rh            = dm_device.get<real,4>("ecpp_L1_sum_rh");
-  //------------------------------------------------------------------------------------------------
-  // Increment the running sums for the averaging period
-  real r_nx_ny  = 1.0/(nx*ny);
-  parallel_for(SimpleBounds<4>(nz, ny, nx, nens), YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // calculate saturation water vapor pressure (Pa)
-      real evs = esatw_crm(temp(k,j,i,iens)); 
-      real qvs = 0.622*EVS / ( ref_pres(iens,k)*100. - evs ); //  ! pres(icrm,kk) with unit of hPa
-      real alt = 287.0 * temp(k,j,i,icrm) / (100.*ref_pres(icrm,k));
-      real rho_t = rho_d(k,j,i,iens) + rho_v(k,j,i,iens)
-      L1_sum_rho(k,j,i,iens) += rho_t
-      L1_sum_qc (k,j,i,iens) += rho_c(k,j,i,iens) / rho_t;
-      L1_sum_qr (k,j,i,iens) += rho_r(k,j,i,iens) / rho_t;
-      L1_sum_qi (k,j,i,iens) += rho_i(k,j,i,iens) / rho_t;
-      L1_sum_qs (k,j,i,iens) += 0; // P3 does not have a snow category
-      L1_sum_ww (k,j,i,iens) += crm_wvel(k,j,i,iens);
-      L1_sum_rh (k,j,i,iens) += ( rho_v(k,j,i,iens) / rho_t ) / qvs(k,j,i,iens);
-      yakl::atomicAdd( acldy_cen_tbeg(k,iens), cldfrac(k,j,i,iens) * r_nx_ny );
-  });
-  //------------------------------------------------------------------------------------------------
-}
-
-inline void pam_ecpp_zero_L1_sums( pam::PamCoupler &coupler) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device      = coupler.get_data_manager_device_readwrite();
-  auto &dm_host        = coupler.get_data_manager_host_readwrite();
-  auto nens            = coupler.get_option<int>("ncrms");
-  auto nx              = coupler.get_option<int>("crm_nx");
-  auto ny              = coupler.get_option<int>("crm_ny");
-  auto nz              = coupler.get_option<int>("crm_nz");
-  auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  //------------------------------------------------------------------------------------------------
-  auto L1_sum_rho      = dm_device.get<real,4>("ecpp_L1_sum_rho");
-  auto L1_sum_cld      = dm_device.get<real,2>("ecpp_L1_sum_cld");
-  auto L1_sum_qc       = dm_device.get<real,4>("ecpp_L1_sum_qc");
-  auto L1_sum_qr       = dm_device.get<real,4>("ecpp_L1_sum_qr");
-  auto L1_sum_qi       = dm_device.get<real,4>("ecpp_L1_sum_qi");
-  auto L1_sum_qs       = dm_device.get<real,4>("ecpp_L1_sum_qs");
-  auto L1_sum_ww       = dm_device.get<real,4>("ecpp_L1_sum_ww");
-  auto L1_sum_rh       = dm_device.get<real,4>("ecpp_L1_sum_rh");
-  //------------------------------------------------------------------------------------------------
-  parallel_for(SimpleBounds<4>(nz, ny, nx, nens), YAKL_LAMBDA (int k, int j, int i, int iens) {
-    L1_sum_rho(k,j,i,iens) = 0;
-    L1_sum_cld(k,j,i,iens) = 0;
-    L1_sum_qc (k,j,i,iens) = 0;
-    L1_sum_qr (k,j,i,iens) = 0;
-    L1_sum_qi (k,j,i,iens) = 0;
-    L1_sum_qs (k,j,i,iens) = 0;
-    L1_sum_ww (k,j,i,iens) = 0;
-    L1_sum_rh (k,j,i,iens) = 0;
-  });
-  //------------------------------------------------------------------------------------------------
-}
-
-inline void pam_ecpp_update_L2_sums( pam::PamCoupler &coupler) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device      = coupler.get_data_manager_device_readwrite();
-  auto &dm_host        = coupler.get_data_manager_host_readwrite();
-  auto nens            = coupler.get_option<int>("ncrms");
-  auto nx              = coupler.get_option<int>("crm_nx");
-  auto ny              = coupler.get_option<int>("crm_ny");
-  auto nz              = coupler.get_option<int>("crm_nz");
-  auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  //------------------------------------------------------------------------------------------------
-  //------------------------------------------------------------------------------------------------
-}
-
-inline void pam_ecpp_zero_L2_sums( pam::PamCoupler &coupler) {
-  using yakl::c::parallel_for;
-  using yakl::c::SimpleBounds;
-  auto &dm_device      = coupler.get_data_manager_device_readwrite();
-  auto &dm_host        = coupler.get_data_manager_host_readwrite();
-  auto nens            = coupler.get_option<int>("ncrms");
-  auto nx              = coupler.get_option<int>("crm_nx");
-  auto ny              = coupler.get_option<int>("crm_ny");
-  auto nz              = coupler.get_option<int>("crm_nz");
-  auto gcm_nlev        = coupler.get_option<int>("gcm_nlev");
-  //------------------------------------------------------------------------------------------------
-  auto L2_sum_      = dm_device.get<real,4>("ecpp_L2_sum_");
-  //------------------------------------------------------------------------------------------------
-  parallel_for(SimpleBounds<4>(nz, ny, nx, nens), YAKL_LAMBDA (int k, int j, int i, int iens) {
-    L2_sum_(k,j,i,iens) = 0;
-  });
-  //------------------------------------------------------------------------------------------------
-}
-
+// ???
 // inline void pam_ecpp_transport_classification( pam::PamCoupler &coupler) {
 //   using yakl::c::parallel_for;
 //   using yakl::c::SimpleBounds;
@@ -554,6 +129,8 @@ inline void pam_ecpp_zero_L2_sums( pam::PamCoupler &coupler) {
 //   //------------------------------------------------------------------------------------------------
 // }
 
+
+// ???
 // inline void pam_ecpp_get_masks( pam::PamCoupler &coupler) {
 //   using yakl::c::parallel_for;
 //   using yakl::c::SimpleBounds;
@@ -608,6 +185,17 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
   auto threshold_prc       = coupler.get_option<real>("ecpp_threshold_prc")
   auto afrac_cut           = coupler.get_option<real>("ecpp_afrac_cut")
   //------------------------------------------------------------------------------------------------
+  // Level 1 running sums
+  // real2d acldy_cen_tbeg      ("acldy_cen_tbeg",      nz,  nens);
+  auto L1_sum_cld      = dm_device.get<real,2>("ecpp_L1_sum_cld");
+  auto L1_sum_rho      = dm_device.get<real,4>("ecpp_L1_sum_rho");
+  auto L1_sum_qc       = dm_device.get<real,4>("ecpp_L1_sum_qc");
+  auto L1_sum_qr       = dm_device.get<real,4>("ecpp_L1_sum_qr");
+  auto L1_sum_qi       = dm_device.get<real,4>("ecpp_L1_sum_qi");
+  auto L1_sum_qs       = dm_device.get<real,4>("ecpp_L1_sum_qs");
+  auto L1_sum_ww       = dm_device.get<real,4>("ecpp_L1_sum_ww");
+  auto L1_sum_rh       = dm_device.get<real,4>("ecpp_L1_sum_rh");
+  //------------------------------------------------------------------------------------------------
   // get misc ECPP variables
   auto ecpp_L2_cnt                    = dm_device.get<int, 1>("ecpp_L2_cnt");
   auto ndown                          = dm_device.get<int, 1>("ndown");
@@ -622,20 +210,13 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
   auto wup_rms                        = dm_device.get<real,1>("wup_rms");
   auto wdown_rms                      = dm_device.get<real,1>("wdown_rms");
   auto wup_bar                        = dm_device.get<real,1>("wup_bar");
-  auto qcloudsum1                     = dm_device.get<real,4>("qcloudsum1");
   auto qcloud_bfsum1                  = dm_device.get<real,4>("qcloud_bfsum1");
-  auto qrainsum1                      = dm_device.get<real,4>("qrainsum1");
-  auto qicesum1                       = dm_device.get<real,4>("qicesum1");
-  auto qsnowsum1                      = dm_device.get<real,4>("qsnowsum1");
   auto qgraupsum1                     = dm_device.get<real,4>("qgraupsum1");
   auto qlsinksum1                     = dm_device.get<real,4>("qlsinksum1");
   auto precrsum1                      = dm_device.get<real,4>("precrsum1");
   auto precsolidsum1                  = dm_device.get<real,4>("precsolidsum1");
   auto precallsum1                    = dm_device.get<real,4>("precallsum1");
-  auto L1_sum_rho                        = dm_device.get<real,4>("ecpp_L1_sum_rho");
-  auto rhsum1                         = dm_device.get<real,4>("rhsum1");
   auto cf3dsum1                       = dm_device.get<real,4>("cf3dsum1");
-  auto ecppwwsum1                     = dm_device.get<real,4>("ecppwwsum1");
   auto ecppwwsqsum1                   = dm_device.get<real,4>("ecppwwsqsum1");
   auto tkesgssum1                     = dm_device.get<real,4>("tkesgssum1");
   auto qlsink_bfsum1                  = dm_device.get<real,4>("qlsink_bfsum1");
@@ -691,21 +272,21 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
   auto ecpp_cat_tbeg                  = dm_device.get<real,2>("ecpp_cat_tbeg");
   //------------------------------------------------------------------------------------------------
   // Get PAM state variables
-  auto crm_rho_d                      = dm_device.get<real,4>("density_dry");
-  auto crm_rho_v                      = dm_device.get<real,4>("water_vapor");
-  auto crm_rho_c                      = dm_device.get<real,4>("cloud_water");
-  auto crm_rho_r                      = dm_device.get<real,4>("rain");
-  auto crm_rho_i                      = dm_device.get<real,4>("ice");
-  auto crm_temp                       = dm_device.get<real,4>("temp");
-  // auto qvloud                         = dm_device.get<real,4>("water_vapor");
-  // auto qcloud                         = dm_device.get<real,4>("cloud_water");
-  // auto qrloud                         = dm_device.get<real,4>("rain");
-  // auto qiloud                         = dm_device.get<real,4>("ice");
-  // auto qirloud                        = dm_device.get<real,4>("ice_rime");
-  auto ref_pres                       = dm_device.get<real,2>("ref_pres");
-  auto crm_wvel                       = dm_device.get<real,4>("wvel");
-  auto cldfrac                        = dm_device.get<real,4>("cldfrac");
-  auto shoc_tke                       = dm_device.get<real,4>("tke");
+  auto crm_rho_d                      = dm_device.get<real const,4>("density_dry");
+  auto crm_rho_v                      = dm_device.get<real const,4>("water_vapor");
+  auto crm_rho_c                      = dm_device.get<real const,4>("cloud_water");
+  auto crm_rho_r                      = dm_device.get<real const,4>("rain");
+  auto crm_rho_i                      = dm_device.get<real const,4>("ice");
+  auto crm_temp                       = dm_device.get<real const,4>("temp");
+  // auto qvloud                         = dm_device.get<real const,4>("water_vapor");
+  // auto qcloud                         = dm_device.get<real const,4>("cloud_water");
+  // auto qrloud                         = dm_device.get<real const,4>("rain");
+  // auto qiloud                         = dm_device.get<real const,4>("ice");
+  // auto qirloud                        = dm_device.get<real const,4>("ice_rime");
+  auto ref_pres                       = dm_device.get<real const,2>("ref_pres");
+  auto crm_wvel                       = dm_device.get<real const,4>("wvel");
+  auto cldfrac                        = dm_device.get<real const,4>("cldfrac");
+  auto shoc_tke                       = dm_device.get<real const,4>("tke");
   //------------------------------------------------------------------------------------------------
   // Define variables used for categorization
   real7d mask_bnd            ("mask_bnd",            nz+1,ny,nx,nens,nclass_cld,nclass_trx,nclass_prc);
@@ -733,7 +314,7 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
   real5d qlsink_bf_cen       ("qlsink_bf_cen",       nclass_prc,nclass_trx,nclass_cld,nz,  nens);
   real5d qlsink_avg_cen      ("qlsink_avg_cen",      nclass_prc,nclass_trx,nclass_cld,nz,  nens);
   real5d prain_cen           ("prain_cen",           nclass_prc,nclass_trx,nclass_cld,nz,  nens);      
-  real2d acldy_cen_tbeg      ("acldy_cen_tbeg",      nz,  nens);
+  
   real2d wwqui_bar_cen       ("wwqui_bar_cen",       nz,  nens);
   real2d wwqui_bar_bnd       ("wwqui_bar_bnd",       nz+1,nens);
   real2d wwqui_cld_bar_cen   ("wwqui_cld_bar_cen",   nz,nens);
@@ -800,115 +381,58 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
 
   //------------------------------------------------------------------------------------------------
 
-  // double T_test = 283.14;
-  // double polysvp(double T, int TYPE);
-  // double esat_test = esatw_crm(T_test);
-  // printf("%s %.2f\n", "Liran check evp:", esat_test);
+  // Increment the running sums
+  pam_ecpp_L1_update_sums(coupler)
+  pam_ecpp_L2_update_sums(coupler)
 
-  //------------------------------------------------------------------------------------------------
-  // Begin categorization
-
-  // Increment the 3-D running sums for averaging period 1.
-  // Increments 3-D running sums for the variables averaged every
-  // ntavg1_mm minutes.  
-
-  // parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
-  //   YAKL_LAMBDA (int k, int j, int i, int icrm) {
-  //     real EVS = esatw_crm(crm_temp(k,j,i,icrm)); //   ! saturation water vapor pressure (PA)
-  //     qvs(k,j,i,icrm) = .622*EVS/(ref_pres(icrm,k)*100.-EVS); //  ! pres(icrm,kk) with unit of hPa
-  //     alt(k,j,i,icrm) =  287.0*crm_temp(k,j,i,icrm)/(100.*ref_pres(icrm,k));
-  //     real tmp_qv = crm_rho_v(k,j,i,iens) / ( crm_rho_d(k,j,i,iens) + crm_rho_v(k,j,i,iens) );
-  //     real rh_temp = tmp_qv / qvs(k,j,i,icrm);
-  //     altsum1   (k,j,i,icrm) = altsum1(k,j,i,icrm) + alt(k,j,i,icrm);
-  //     qcloudsum1(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qcloud   (k,j,i,icrm);
-  //     qrainsum1 (k,j,i,icrm) = qrainsum1 (k,j,i,icrm) + qrloud   (k,j,i,icrm);
-  //     qicesum1  (k,j,i,icrm) = qicesum1  (k,j,i,icrm) + qiloud   (k,j,i,icrm);
-  //     qsnowsum1 (k,j,i,icrm) = qsnowsum1 (k,j,i,icrm) + qsnowsum1(k,j,i,icrm); // This is ZERO!! for now
-  //     ecppwwsum1(k,j,i,icrm) = ecppwwsum1(k,j,i,icrm) + crm_wvel  (k,j,i,icrm);
-  //     rhsum1    (k,j,i,icrm) = rhsum1    (k,j,i,icrm) + rh_temp;
-  // });
-  // real r_nx_ny  = 1.0/(nx*ny);  // precompute reciprocal to avoid costly divisions
-  // parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int iens) {
-  //     yakl::atomicAdd( acldy_cen_tbeg (k,iens), cldfrac(k,j,i,iens) * r_nx_ny );
-  // });
-
-  /*
-        qcloud_bfsum1(:,:,:,icrm) = qcloud_bfsum1(:,:,:,icrm) + qcloud_bf(:,:,:,icrm)
-        qsnowsum1    (:,:,:,icrm) = qsnowsum1    (:,:,:,icrm) + qsnow(:,:,:,icrm)
-        qgraupsum1   (:,:,:,icrm) = qgraupsum1   (:,:,:,icrm) + qgraup(:,:,:,icrm)
-        qlsinksum1   (:,:,:,icrm) = qlsinksum1   (:,:,:,icrm) + qlsink(:,:,:,icrm)*qcloud(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
-        precrsum1    (:,:,:,icrm) = precrsum1    (:,:,:,icrm) + precr(:,:,:,icrm)
-        precsolidsum1(:,:,:,icrm) = precsolidsum1(:,:,:,icrm) + precsolid(:,:,:,icrm)
-        altsum1      (:,:,:,icrm) = altsum1      (:,:,:,icrm) + alt(:,:,:,icrm
-        qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
-
-  */
-  //------------------------------------------------------------------------------------------------
   // Check if we have reached the end of the level 1 time averaging period   
-  if (nstep >=ntavg1 && nstep % ntavg1 == 0) {
-    parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int k, int j, int i, int icrm) {
-      // itavg1 is divisible by ntavg1
-      qcloudsum1      (k,j,i,icrm) = qcloudsum1(k,j,i,icrm) / ntavg1;
-      qrainsum1       (k,j,i,icrm) = qrainsum1 (k,j,i,icrm) / ntavg1;
-      qicesum1        (k,j,i,icrm) = qicesum1  (k,j,i,icrm) / ntavg1;
-      qsnowsum1       (k,j,i,icrm) = qsnowsum1 (k,j,i,icrm) / ntavg1;
-      ecppwwsum1      (k,j,i,icrm) = ecppwwsum1(k,j,i,icrm) / ntavg1;
-      rhsum1          (k,j,i,icrm) = rhsum1    (k,j,i,icrm) / ntavg1;
-    });
+  if (nstep >=ntavg1 && nstep % ntavg1 == 0) { pam_ecpp_L1_sum_to_avg(coupler) }
 
-    parallel_for(SimpleBounds<2>(nz,nens), YAKL_LAMBDA (int k, int iens) {
-      acldy_cen_tbeg (k,iens) = acldy_cen_tbeg (k,iens)  /ntavg1;
-    });
+  //------------------------------------------------------------------------------------------------
+  /*
+  Start of subroutine categorization_stats(
+  Transport classification is based on total condensate (cloudmixr_total), and
+  cloudy (liquid) and clear (non-liquid) classification is based on liquid water,
+  because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
+  Minghuai Wang, 2010-04
+  */
+  
+  parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
+    YAKL_LAMBDA (int k, int j, int i, int icrm) {
+      cloudmixr(k,j,i,icrm) = L1_sum_qc(k,j,i,icrm);
+      cloudmixr_total(k,j,i,icrm) = L1_sum_qc(k,j,i,icrm) + L1_sum_qi(k,j,i,icrm);
+      // total hydrometer (rain, snow, and graupel)
+      precmixr_total(k,j,i,icrm) = L1_sum_qr(k,j,i,icrm)+L1_sum_qs(k,j,i,icrm); //+qsnow+qgraup
+  });
 
-    // Increment the running sums for the level two variables that are not
-    // already incremented. Consolidate from 3-D to 1-D columns.
-
-    //------------------------------------------------------------------------------------------------
-    /*
-    Start of subroutine categorization_stats(
-    Transport classification is based on total condensate (cloudmixr_total), and
-    cloudy (liquid) and clear (non-liquid) classification is based on liquid water,
-    because wet deposition, aqueous chemistry, and droplet activaton, all are for liquid clouds.
-    Minghuai Wang, 2010-04
-    */
-    
-    parallel_for( "update sums",SimpleBounds<4>(nz, ny, nx, nens),
-      YAKL_LAMBDA (int k, int j, int i, int icrm) {
-        cloudmixr(k,j,i,icrm) = qcloudsum1(k,j,i,icrm);
-        cloudmixr_total(k,j,i,icrm) = qcloudsum1(k,j,i,icrm) + qicesum1(k,j,i,icrm);
-        // total hydrometer (rain, snow, and graupel)
-        precmixr_total(k,j,i,icrm) = qrainsum1(k,j,i,icrm)+qsnowsum1(k,j,i,icrm); //+qsnow+qgraup
-    });
-
-    int nxy = nx*ny;
-    parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
-      for (int k_gcm=0; k_gcm<nz; k_gcm++) {
-        //int l = plev-(k+1);
-        int k_crm= (gcm_nlev+1)-1-k_gcm;
-        /*
-        ! Get cloud top height
-        ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
-        ! downdraft is allowed above the condensate level (both liquid and ice).
-        */
-        cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
-        // BELOW: 0.01*qvs may be too large at low level.
-        // if( cloudmixr_total(i,j,k) >= max(0.01*qvs(i,j,k), threshold_trans_cld) ) then
-        if (cloudmixr_total(k_crm,j,i,icrm) >= threshold_trans_cld) {
-          cloudtop(j,i,icrm) = k_crm; 
-          break; // exit the loop
-        }
+  int nxy = nx*ny;
+  parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int icrm) {
+    for (int k_gcm=0; k_gcm<nz; k_gcm++) {
+      //int l = plev-(k+1);
+      int k_crm= (gcm_nlev+1)-1-k_gcm;
+      /*
+      ! Get cloud top height
+      ! Cloud top height is used to determine whether there is updraft/downdraft. No updraft and
+      ! downdraft is allowed above the condensate level (both liquid and ice).
+      */
+      cloudtop(j,i,icrm) = 1; // !Default to bottom level if no cloud in column.
+      // BELOW: 0.01*qvs may be too large at low level.
+      // if( cloudmixr_total(i,j,k) >= max(0.01*qvs(i,j,k), threshold_trans_cld) ) then
+      if (cloudmixr_total(k_crm,j,i,icrm) >= threshold_trans_cld) {
+        cloudtop(j,i,icrm) = k_crm; 
+        break; // exit the loop
       }
-      // for (int k_crm=0; k_crm<(nz+1); k_crm++) {
-      for (int k_crm=0; k_crm<nz; k_crm++) {
-        int km0 = std::min(nz,k_crm);
-        int km1 = std::max(1,k_crm-1);
-        // rhoair(k_crm,icrm) = rhoair(k_crm,icrm) + 0.5*( 1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm) )/nxy;
-        rhoair(k_crm,icrm) = L1_sum_rho(k,j,i,icrm) / nxy;
-      }
-    }); // end of parallel_for( SimpleBounds<3>(ny,nx,nens)
+    }
+    // for (int k_crm=0; k_crm<(nz+1); k_crm++) {
+    for (int k_crm=0; k_crm<nz; k_crm++) {
+      int km0 = std::min(nz,k_crm);
+      int km1 = std::max(1,k_crm-1);
+      // rhoair(k_crm,icrm) = rhoair(k_crm,icrm) + 0.5*( 1.0/altsum1(km1,j,i,icrm) + 1.0/altsum1(km0,j,i,icrm) )/nxy;
+      rhoair(k_crm,icrm) = L1_sum_rho(k,j,i,icrm) / nxy;
+    }
+  }); // end of parallel_for( SimpleBounds<3>(ny,nx,nens)
 
-    //printf("Liran check categorization_stats 2\n");
-    //------------------------------------------------------------------------------------------------
+  //------------------------------------------------------------------------------------------------
     /*
       !------------------------------------------------------------------------
       subroutine determine_transport_thresh( &
@@ -986,21 +510,21 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
               !over the other for the count. This differs from the Ferret code which
               !assigns w=0 to up values.
     */
-        if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
+        if (L1_sum_ww(k_crm,j,i,icrm) > 0.0) {
           nup(icrm) = nup(icrm) + 1;
-          wup_bar(icrm) = wup_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
+          wup_bar(icrm) = wup_bar(icrm) + L1_sum_ww(k_crm,j,i,icrm);
           nup_k(k_crm,icrm) = nup_k(k_crm,icrm) + 1;
-          wup_bar_k(k_crm,icrm) = wup_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
+          wup_bar_k(k_crm,icrm) = wup_bar_k(k_crm,icrm) + L1_sum_ww(k_crm,j,i,icrm);
           kup_top(icrm)   = std::max(kup_top(icrm), k_crm);
         }
       }
 
       for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
-        if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
+        if (L1_sum_ww(k_crm,j,i,icrm) < 0.0) {
           ndown(icrm) = ndown(icrm) + 1;
-          wdown_bar(icrm) = wdown_bar(icrm) + ecppwwsum1(k_crm,j,i,icrm);
+          wdown_bar(icrm) = wdown_bar(icrm) + L1_sum_ww(k_crm,j,i,icrm);
           ndown_k(k_crm,icrm) = ndown_k(k_crm,icrm) + 1;
-          wdown_bar_k(k_crm,icrm) = wdown_bar_k(k_crm,icrm) + ecppwwsum1(k_crm,j,i,icrm);
+          wdown_bar_k(k_crm,icrm) = wdown_bar_k(k_crm,icrm) + L1_sum_ww(k_crm,j,i,icrm);
           kdown_top(icrm)   = std::max(kdown_top(icrm), k_crm);
         }
       }
@@ -1034,16 +558,16 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
               !We intentionally ignore when w==0 as to not bias one direction
               !over the other.
     */
-        if (ecppwwsum1(k_crm,j,i,icrm) > 0.0) {
-          wup_stddev(icrm) = wup_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar(icrm));
-          wup_stddev_k(k_crm,icrm) = wup_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm));
+        if (L1_sum_ww(k_crm,j,i,icrm) > 0.0) {
+          wup_stddev(icrm) = wup_stddev(icrm) + (L1_sum_ww(k_crm,j,i,icrm)-wup_bar(icrm))*(L1_sum_ww(k_crm,j,i,icrm)-wup_bar(icrm));
+          wup_stddev_k(k_crm,icrm) = wup_stddev_k(k_crm,icrm) + (L1_sum_ww(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm))*(L1_sum_ww(k_crm,j,i,icrm)-wup_bar_k(k_crm,icrm));
         }
       }
 
       for (int k_crm=0; k_crm<cloudtop_downaa(j,i,icrm); k_crm++) {
-        if (ecppwwsum1(k_crm,j,i,icrm) < 0.0) {
-          wdown_stddev(icrm) = wdown_stddev(icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar(icrm));
-          wdown_stddev_k(k_crm,icrm) = wdown_stddev_k(k_crm,icrm) + (ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm))*(ecppwwsum1(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm));
+        if (L1_sum_ww(k_crm,j,i,icrm) < 0.0) {
+          wdown_stddev(icrm) = wdown_stddev(icrm) + (L1_sum_ww(k_crm,j,i,icrm)-wdown_bar(icrm))*(L1_sum_ww(k_crm,j,i,icrm)-wdown_bar(icrm));
+          wdown_stddev_k(k_crm,icrm) = wdown_stddev_k(k_crm,icrm) + (L1_sum_ww(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm))*(L1_sum_ww(k_crm,j,i,icrm)-wdown_bar_k(k_crm,icrm));
         }
       }
     });
@@ -1690,7 +1214,7 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
                   //if (iCL==CLR){
                   //  printf("\narea_cen : %d %d %d %d %d %d %d %.8f %.8f %.8f: ", k,j,i,icrm,iCL,iTR,iPR,mask_tmp,mask_cen(k,j,i,icrm,iCL,iTR,iPR),area_cen(iPR,iTR,iCL,k,icrm));
                   //}
-                  rh_cen(iPR,iTR,iCL,k,icrm) = rh_cen(iPR,iTR,iCL,k,icrm) + rhsum1(k,j,i,icrm) *mask_tmp;
+                  rh_cen(iPR,iTR,iCL,k,icrm) = rh_cen(iPR,iTR,iCL,k,icrm) + L1_sum_rh(k,j,i,icrm) *mask_tmp;
                   qcloud_cen(iPR,iTR,iCL,k,icrm) = qcloud_cen(iPR,iTR,iCL,k,icrm) + qcloud(k,j,i,icrm)*mask_tmp;
                   qrain_cen(iPR,iTR,iCL,k,icrm) = qrain_cen(iPR,iTR,iCL,k,icrm) + qrloud(k,j,i,icrm)*mask_tmp;
                   qice_cen(iPR,iTR,iCL,k,icrm) = qice_cen(iPR,iTR,iCL,k,icrm) + qiloud(k,j,i,icrm)*mask_tmp;
@@ -1894,13 +1418,13 @@ inline void pam_ecpp_stat( pam::PamCoupler &coupler , int nstep) {
 
     // Done with time level one averages so zero them out for next period.
     parallel_for(SimpleBounds<4>(nz,ny,nx,nens), YAKL_LAMBDA (int iz, int iy, int ix, int iens) {
-      qcloudsum1    (iz,iy,ix,iens) = 0;
-      qrainsum1     (iz,iy,ix,iens) = 0;
-      qicesum1      (iz,iy,ix,iens) = 0;
-      qsnowsum1     (iz,iy,ix,iens) = 0;
+      L1_sum_qc    (iz,iy,ix,iens) = 0;
+      L1_sum_qr     (iz,iy,ix,iens) = 0;
+      L1_sum_qi      (iz,iy,ix,iens) = 0;
+      L1_sum_qs     (iz,iy,ix,iens) = 0;
       altsum1       (iz,iy,ix,iens) = 0;
-      ecppwwsum1    (iz,iy,ix,iens) = 0;
-      rhsum1        (iz,iy,ix,iens) = 0;
+      L1_sum_ww    (iz,iy,ix,iens) = 0;
+      L1_sum_rh        (iz,iy,ix,iens) = 0;
     });
 
   } // if (nstep >=ntavg1 && nstep % ntavg1 == 0)  

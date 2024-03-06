@@ -1761,6 +1761,32 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
     necpp = dtstep_pp/ztodt
     !write(iulog,*) 'Liran check begin ECPP in',necpp,dtstep_pp,ztodt
     !if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+    call outfld('MMF_STATEBF_LPTR15   ', state%q(:ncol,:,15)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR8   ', state%q(:ncol,:,8)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR9   ', state%q(:ncol,:,9)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR10   ', state%q(:ncol,:,10)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR11   ', state%q(:ncol,:,11)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR12   ', state%q(:ncol,:,12)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR13   ', state%q(:ncol,:,13)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR14   ', state%q(:ncol,:,14)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR20   ', state%q(:ncol,:,20)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR16   ', state%q(:ncol,:,16)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR17   ', state%q(:ncol,:,17)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR18   ', state%q(:ncol,:,18)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR19   ', state%q(:ncol,:,19)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR28   ', state%q(:ncol,:,28)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR21   ', state%q(:ncol,:,21)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR22   ', state%q(:ncol,:,22)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR23   ', state%q(:ncol,:,23)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR24   ', state%q(:ncol,:,24)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR25   ', state%q(:ncol,:,25)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR26   ', state%q(:ncol,:,26)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR27   ', state%q(:ncol,:,27)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR32   ', state%q(:ncol,:,32)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR29   ', state%q(:ncol,:,29)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR30   ', state%q(:ncol,:,30)  , ncol, lchnk   )
+    call outfld('MMF_STATEBF_LPTR31   ', state%q(:ncol,:,31)  , ncol, lchnk   )
+
     if (nstep.ne.0) then
 
       ! aerosol tendency from droplet activation and mixing
@@ -1794,6 +1820,31 @@ subroutine tphysbc2(ztodt, fsns, fsnt, flns, flnt, &
       call t_stopf ('ecpp')
 
     end if ! nstep.ne.0 .and. mod(nstep, necpp).eq.0
+    call outfld('MMF_STATEAF_LPTR15   ', state%q(:ncol,:,15)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR8   ', state%q(:ncol,:,8)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR9   ', state%q(:ncol,:,9)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR10   ', state%q(:ncol,:,10)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR11   ', state%q(:ncol,:,11)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR12   ', state%q(:ncol,:,12)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR13   ', state%q(:ncol,:,13)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR14   ', state%q(:ncol,:,14)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR20   ', state%q(:ncol,:,20)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR16   ', state%q(:ncol,:,16)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR17   ', state%q(:ncol,:,17)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR18   ', state%q(:ncol,:,18)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR19   ', state%q(:ncol,:,19)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR28   ', state%q(:ncol,:,28)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR21   ', state%q(:ncol,:,21)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR22   ', state%q(:ncol,:,22)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR23   ', state%q(:ncol,:,23)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR24   ', state%q(:ncol,:,24)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR25   ', state%q(:ncol,:,25)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR26   ', state%q(:ncol,:,26)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR27   ', state%q(:ncol,:,27)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR32   ', state%q(:ncol,:,32)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR29   ', state%q(:ncol,:,29)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR30   ', state%q(:ncol,:,30)  , ncol, lchnk   )
+     call outfld('MMF_STATEAF_LPTR31   ', state%q(:ncol,:,31)  , ncol, lchnk   )
 
   end if ! use_ECPP
 #endif /* ECPP */

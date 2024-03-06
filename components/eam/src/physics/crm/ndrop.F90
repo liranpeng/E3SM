@@ -1138,7 +1138,7 @@ subroutine dropmixnuc( &
 
                mm   = mam_idx(m,l)
                lptr = mam_cnst_idx(m,l)
-
+               print*,"Liran check ndrop",i,m,l,mm,lptr,nnew,top_lev
                raertend(top_lev:pver) = (raercol(top_lev:pver,mm,nnew) - raer(mm)%fld(i,top_lev:pver))*dtinv
                qqcwtend(top_lev:pver) = (raercol_cw(top_lev:pver,mm,nnew) - qqcw(mm)%fld(i,top_lev:pver))*dtinv
 
@@ -1152,6 +1152,34 @@ subroutine dropmixnuc( &
             end do
          end do
 
+      end if
+
+      if(do_mmf_local) then  ! called in the mmf part.
+        call outfld('MMF_PTENDQ_LPTR15   ', ptend%q(:ncol,:,15)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR8   ', ptend%q(:ncol,:,8)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR9   ', ptend%q(:ncol,:,9)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR10   ', ptend%q(:ncol,:,10)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR11   ', ptend%q(:ncol,:,11)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR12   ', ptend%q(:ncol,:,12)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR13   ', ptend%q(:ncol,:,13)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR14   ', ptend%q(:ncol,:,14)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR20   ', ptend%q(:ncol,:,20)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR16   ', ptend%q(:ncol,:,16)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR17   ', ptend%q(:ncol,:,17)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR18   ', ptend%q(:ncol,:,18)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR19   ', ptend%q(:ncol,:,19)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR28   ', ptend%q(:ncol,:,28)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR21   ', ptend%q(:ncol,:,21)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR22   ', ptend%q(:ncol,:,22)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR23   ', ptend%q(:ncol,:,23)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR24   ', ptend%q(:ncol,:,24)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR25   ', ptend%q(:ncol,:,25)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR26   ', ptend%q(:ncol,:,26)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR27   ', ptend%q(:ncol,:,27)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR32   ', ptend%q(:ncol,:,32)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR29   ', ptend%q(:ncol,:,29)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR30   ', ptend%q(:ncol,:,30)  , pcols, lchnk   )
+        call outfld('MMF_PTENDQ_LPTR31   ', ptend%q(:ncol,:,31)  , pcols, lchnk   )
       end if
 
 
@@ -1178,18 +1206,18 @@ subroutine dropmixnuc( &
    ! end of main loop over i/longitude ....................................
 
    if(do_mmf_local) then  ! called in the mmf part.
-        call outfld('MMF_NDROPCOL   ', ndropcol  , pcols, lchnk   )
-        call outfld('MMF_NDROPSRC   ', nsource    , pcols, lchnk   )
-        call outfld('MMF_NDROPMIX   ', ndropmix    , pcols, lchnk   )
-        call outfld('MMF_NDROPLCLOUD', cldn    , pcols, lchnk   )
-        call outfld('MMF_NDROPWTKE  ', wtke    , pcols, lchnk   )
-        call outfld('MMF_NDROPKVH   ', kvh     , pcols, lchnk   )
+        call outfld('MMF_NDROPCOL   ', ndropcol(1:ncol)  , pcols, lchnk   )
+        call outfld('MMF_NDROPSRC   ', nsource(1:ncol,1:pver)   , pcols, lchnk   )
+        call outfld('MMF_NDROPMIX   ', ndropmix(1:ncol,1:pver)    , pcols, lchnk   )
+        call outfld('MMF_NDROPLCLOUD', cldn(1:ncol,1:pver)   , pcols, lchnk   )
+        call outfld('MMF_NDROPWTKE  ', wtke(1:ncol,1:pver)    , pcols, lchnk   )
+        !call outfld('MMF_NDROPKVH   ', kvh(1:ncol,1:pver)     , pcols, lchnk   )
    else
-        call outfld('NDROPCOL', ndropcol, pcols, lchnk)
-        call outfld('NDROPSRC', nsource,  pcols, lchnk)
-        call outfld('NDROPMIX', ndropmix, pcols, lchnk)
-        call outfld('LCLOUD  ', cldn,     pcols, lchnk)
-        call outfld('WTKE    ', wtke,     pcols, lchnk) 
+        call outfld('NDROPCOL', ndropcol(1:ncol), pcols, lchnk)
+        call outfld('NDROPSRC', nsource(1:ncol,1:pver),  pcols, lchnk)
+        call outfld('NDROPMIX', ndropmix(1:ncol,1:pver), pcols, lchnk)
+        call outfld('LCLOUD  ', cldn(1:ncol,1:pver),     pcols, lchnk)
+        call outfld('WTKE    ', wtke(1:ncol,1:pver),     pcols, lchnk) 
    endif
 
    call ccncalc(state, pbuf, cs, ccn)
